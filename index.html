@@ -1,972 +1,869 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PropTrack - Complete Property Management MVP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
-        .page { display: none; }
-        .page.active { display: flex; }
-        #viewer-container canvas { width: 100% !important; height: 100% !important; display: block; }
-        .sidebar-link.active { background-color: rgba(255,255,255,0.1); border-right: 4px solid #818cf8; }
-        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .status-open { background-color: #fee2e2; color: #991b1b; }
-        .status-progress { background-color: #fef3c7; color: #92400e; }
-        .status-closed { background-color: #d1fae5; color: #065f46; }
-        .priority-high { border-left-color: #ef4444; }
-        .priority-medium { border-left-color: #f59e0b; }
-        .priority-low { border-left-color: #10b981; }
-        
-        /* Animation for modals */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .modal-animation {
-            animation: fadeIn 0.2s ease-out;
-        }
-        
-        /* Toast notification */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #1f2937;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            z-index: 1000;
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>PropertyPulse — IFC Viewer & Issue Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080c14;--sf:#0f1520;--sf2:#151d2e;--sf3:#1a2540;
+  --bd:#1e2a42;--bd2:#2a3a58;
+  --ac:#3b82f6;--ac2:#2563eb;--acg:rgba(59,130,246,.12);
+  --gn:#22c55e;--yw:#eab308;--rd:#ef4444;--or:#f97316;
+  --tx:#e2e8f0;--tx2:#94a3b8;--tx3:#64748b;
+  --r:8px;--rl:12px;--tr:.2s ease;
+  --font:'Inter',system-ui,sans-serif
+}
+html,body,#app{height:100%;font-family:var(--font);background:var(--bg);color:var(--tx)}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+::placeholder{color:var(--tx3)}
+
+.lp{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;
+  background:linear-gradient(145deg,#080c14,#0f1d35,#0a1628)}
+.lc{background:var(--sf);border:1px solid var(--bd);border-radius:20px;
+  padding:44px 40px;width:100%;max-width:420px;text-align:center;
+  box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.lc-ico{font-size:44px;margin-bottom:6px}
+.lc h1{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(135deg,var(--tx),var(--ac));-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent}
+.lc-sub{color:var(--tx3);font-size:.88rem;margin:4px 0 32px}
+.lc form{display:flex;flex-direction:column;gap:12px;text-align:left}
+.fg label{display:block;font-size:.75rem;font-weight:600;color:var(--tx2);
+  margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.fi{width:100%;padding:12px 14px;border-radius:var(--r);border:1px solid var(--bd);
+  background:var(--bg);color:var(--tx);font-size:.92rem;outline:none;transition:var(--tr)}
+.fi:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acg)}
+.btn{padding:12px 20px;border-radius:var(--r);border:none;font-weight:600;
+  font-size:.9rem;transition:var(--tr);display:inline-flex;align-items:center;
+  justify-content:center;gap:6px}
+.btn-p{background:var(--ac);color:#fff}.btn-p:hover{background:var(--ac2)}
+.btn-p:disabled{opacity:.5;cursor:not-allowed}
+.btn-o{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+.btn-o:hover{background:var(--acg)}
+.btn-d{background:transparent;color:var(--rd);border:1px solid rgba(239,68,68,.25)}
+.btn-d:hover{background:rgba(239,68,68,.1)}
+.btn-s{background:transparent;color:var(--tx2);border:1px solid var(--bd)}
+.btn-s:hover{background:var(--sf2);border-color:var(--bd2)}
+.btn-f{width:100%}
+.err{color:var(--rd);font-size:.82rem;padding:8px 12px;background:rgba(239,68,68,.08);
+  border-radius:var(--r);border:1px solid rgba(239,68,68,.15);margin-top:4px}
+.lc-foot{margin-top:20px;font-size:.82rem;color:var(--tx3)}
+.lc-foot button{background:none;border:none;color:var(--ac);font-weight:600;font-size:.82rem;cursor:pointer}
+.lc-demo{margin-top:20px;padding:12px;background:var(--bg);border-radius:var(--r);border:1px solid var(--bd)}
+.lc-demo p{font-size:.72rem;color:var(--tx3);margin-bottom:4px;text-transform:uppercase;
+  letter-spacing:.05em;font-weight:600}
+.lc-demo code{font-size:.78rem;color:var(--gn);font-family:'SF Mono',monospace}
+
+.dash{display:flex;flex-direction:column;height:100vh}
+.hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;height:54px;background:var(--sf);border-bottom:1px solid var(--bd);flex-shrink:0}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.hdr-m{background:none;border:none;color:var(--tx);font-size:1.2rem;padding:4px 8px;
+  border-radius:6px;transition:var(--tr)}.hdr-m:hover{background:var(--sf2)}
+.hdr-t{font-weight:700;font-size:1rem;display:flex;align-items:center;gap:8px}
+.hdr-r{display:flex;align-items:center;gap:14px}
+.hdr-u{font-size:.82rem;color:var(--tx2)}
+.hdr-lb{background:none;border:1px solid var(--bd);color:var(--tx2);padding:6px 14px;
+  border-radius:6px;font-size:.78rem;transition:var(--tr);cursor:pointer}
+.hdr-lb:hover{border-color:var(--rd);color:var(--rd)}
+.main{display:flex;flex:1;overflow:hidden}
+.vw-wrap{flex:1;position:relative;min-width:0}
+#viewer{width:100%;height:100%;display:block}
+.sb{width:400px;max-width:45vw;border-left:1px solid var(--bd);background:var(--sf);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.sb-hd{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--bd)}
+.sb-hd h2{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.sb-hd .cnt{font-size:.72rem;background:var(--acg);color:var(--ac);padding:2px 8px;
+  border-radius:10px;font-weight:600}
+.flt{display:flex;gap:4px;padding:10px 16px;border-bottom:1px solid var(--bd);overflow-x:auto}
+.flt-b{padding:5px 12px;border-radius:16px;border:1px solid var(--bd);background:transparent;
+  color:var(--tx3);font-size:.72rem;white-space:nowrap;text-transform:capitalize;
+  font-weight:500;transition:var(--tr);cursor:pointer}
+.flt-b.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.flt-b:hover:not(.on){border-color:var(--bd2);color:var(--tx2)}
+.il{flex:1;overflow-y:auto;padding:8px}
+.il-empty{text-align:center;color:var(--tx3);padding:48px 20px;font-size:.85rem}
+.ic{padding:14px;border-radius:var(--r);border:1px solid var(--bd);margin-bottom:8px;
+  cursor:pointer;transition:var(--tr)}
+.ic:hover{border-color:var(--ac);background:var(--sf2)}
+.ic-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ic h3{font-size:.86rem;font-weight:600;line-height:1.35;margin-bottom:6px}
+.ic-d{font-size:.76rem;color:var(--tx3);line-height:1.45;margin-bottom:10px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ic-m{display:flex;justify-content:space-between;align-items:center;font-size:.7rem;color:var(--tx3)}
+.badge{padding:3px 10px;border-radius:12px;font-size:.66rem;font-weight:600;
+  color:#fff;text-transform:capitalize;letter-spacing:.02em}
+.b-open{background:var(--ac)}.b-in_progress{background:var(--yw);color:#1a1a1a}
+.b-resolved{background:var(--gn);color:#1a1a1a}.b-closed{background:var(--tx3)}
+.b-critical{background:var(--rd)}.b-high{background:var(--or);color:#1a1a1a}
+.b-medium{background:var(--yw);color:#1a1a1a}.b-low{background:var(--gn);color:#1a1a1a}
+.pri{font-size:.8rem}
+.sf{display:flex;flex-direction:column;height:100%}
+.sf-hd{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--bd)}
+.sf-hd h2{font-size:1rem;font-weight:700}
+.sf-bd{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.sf-lb{display:flex;flex-direction:column;gap:5px;font-size:.76rem;font-weight:600;color:var(--tx2)}
+.sf-in,.sf-ta,.sf-sel{padding:10px 12px;border-radius:var(--r);border:1px solid var(--bd);
+  background:var(--bg);color:var(--tx);font-size:.88rem;outline:none;transition:var(--tr)}
+.sf-ta{resize:vertical;min-height:80px;line-height:1.5}
+.sf-in:focus,.sf-ta:focus,.sf-sel:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acg)}
+.sf-sel{cursor:pointer}
+.sf-obj{padding:10px 12px;background:var(--acg);border-radius:var(--r);font-size:.82rem;
+  border:1px solid rgba(59,130,246,.2);display:flex;align-items:center;gap:8px}
+.sf-ft{padding:14px 16px;border-top:1px solid var(--bd);display:flex;gap:8px}
+.sf-ft .btn{flex:1}
+.sd{display:flex;flex-direction:column;height:100%}
+.sd-hd{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--bd)}
+.sd-back{background:none;border:none;color:var(--ac);font-size:.84rem;font-weight:600;
+  cursor:pointer;padding:4px 0}.sd-back:hover{color:var(--ac2)}
+.sd-acts{display:flex;gap:8px}
+.sd-bd{flex:1;overflow-y:auto;padding:16px}
+.sd-bd h2{font-size:1.08rem;font-weight:700;line-height:1.35;margin-bottom:14px}
+.sd-badges{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.sd-desc{font-size:.88rem;line-height:1.65;color:var(--tx);margin-bottom:22px}
+.sd-sec{margin-bottom:18px}
+.sd-sec h4{font-size:.72rem;color:var(--tx3);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:8px;font-weight:600}
+.sd-sec p{font-size:.84rem;line-height:1.5;margin-bottom:4px}
+.pp{position:absolute;top:12px;left:12px;width:310px;max-height:calc(100% - 24px);
+  overflow-y:auto;background:rgba(15,21,32,.94);border:1px solid var(--bd);border-radius:var(--rl);
+  padding:18px;z-index:10;backdrop-filter:blur(12px);box-shadow:0 12px 40px rgba(0,0,0,.4);
+  animation:slideIn .25s ease}
+.pp-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.pp h3{font-size:.92rem;font-weight:700;flex:1;line-height:1.35}
+.pp-x{background:none;border:none;color:var(--tx3);font-size:1.1rem;padding:0 2px;
+  cursor:pointer;transition:var(--tr);line-height:1}.pp-x:hover{color:var(--tx)}
+.pp-type{display:inline-block;padding:3px 10px;border-radius:6px;background:var(--acg);
+  color:var(--ac);font-size:.68rem;font-weight:600;margin-bottom:14px;letter-spacing:.02em}
+.pp-tbl{width:100%;border-collapse:collapse;margin-bottom:16px}
+.pp-tbl td{padding:7px 0;font-size:.78rem;vertical-align:top;border-bottom:1px solid var(--bd)}
+.pp-tbl td:first-child{color:var(--tx3);width:38%;font-weight:500}
+.pp-tbl tr:last-child td{border-bottom:none}
+.vb{position:absolute;bottom:14px;left:14px;background:rgba(15,21,32,.88);
+  border:1px solid var(--bd);padding:7px 14px;border-radius:6px;font-size:.72rem;
+  color:var(--tx3);pointer-events:none;z-index:5}
+.vb-mode{color:var(--ac);font-weight:600}
+.vh{position:absolute;top:14px;right:14px;background:rgba(15,21,32,.88);
+  border:1px solid var(--bd);padding:10px 14px;border-radius:var(--r);font-size:.7rem;
+  color:var(--tx3);z-index:5;line-height:1.6}
+.vh b{color:var(--tx2)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--sf2);border:1px solid var(--bd);padding:10px 22px;border-radius:20px;
+  font-size:.82rem;color:var(--tx);z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.4);
+  animation:fadeInUp .3s ease;pointer-events:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInUp{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(max-width:900px){.sb{width:340px;max-width:50vw}.pp{width:260px}}
+@media(max-width:700px){.main{flex-direction:column}
+  .sb{width:100%;max-width:100%;max-height:50vh;border-left:none;border-top:1px solid var(--bd)}
+  .vw-wrap{min-height:45vh}.pp{width:calc(100% - 24px);max-width:340px}.hdr-u{display:none}}
+</style>
 </head>
-<body class="bg-gray-100 h-screen overflow-hidden">
+<body>
+<div id="app"></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    <!-- ==================== AUTH SCREEN ==================== -->
-    <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-indigo-900">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 border border-gray-100">
-            <div class="text-center mb-8">
-                <div class="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center mx-auto mb-4 font-bold text-xl">P</div>
-                <h1 class="text-2xl font-bold text-gray-800">Welcome to PropTrack</h1>
-                <p class="text-sm text-gray-500 mt-1">Sign in to manage your properties</p>
-            </div>
-            <form id="auth-form" class="space-y-4">
-                <div id="register-fields" class="hidden space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                        <input type="text" id="auth-name" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="John Doe">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <input type="email" id="auth-email" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="admin@test.com" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="auth-password" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••" required>
-                </div>
-                <div id="auth-error" class="text-red-500 text-sm hidden"></div>
-                <button type="submit" id="auth-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-md">Sign In</button>
-            </form>
-            <p class="mt-6 text-sm text-center text-gray-500">
-                <span id="auth-toggle-text">Don't have an account? </span> 
-                <span id="auth-toggle-btn" class="text-indigo-600 font-semibold cursor-pointer hover:underline">Register</span>
-            </p>
-            <div class="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 text-center">
-                <strong>Demo Credentials:</strong><br>
-                admin@test.com / password
-            </div>
-        </div>
+/* ═══════════════════════════════════════════════════
+   GLOBAL STATE
+   ═══════════════════════════════════════════════════ */
+const S = {
+  user: null,
+  loginTab: 'login',
+  project: null,
+  issues: [],
+  selObj: null,
+  showForm: false,
+  viewIssue: null,
+  statusFlt: '',
+  sbOpen: true,
+  editMode: false,
+};
+
+/* ═══════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════ */
+const USERS = [
+  { id:'u1', name:'Alex Morgan', email:'admin@demo.com', pass:'demo123', role:'admin' },
+  { id:'u2', name:'Sam Chen', email:'user@demo.com', pass:'demo123', role:'user' },
+];
+const PROJECT = { id:'p1', name:'Riverside Office Complex', desc:'5-storey commercial — Phase 2 fit-out' };
+
+function uid(){ return 'id_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8); }
+function ago(d){ const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString(); }
+function fmtDate(s){ return new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtDT(s){ return new Date(s).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function esc(s){ if(!s)return''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function userName(id){ return USERS.find(u=>u.id===id)?.name||'Unknown'; }
+
+function seedIssues(){
+  return [
+    {id:uid(),title:'Crack in load-bearing column B3',desc:'Visible 2 mm crack at base of column B3 on level 2 during routine inspection. Structural engineer review required. Crack follows aggregate boundary.',status:'open',priority:'critical',proj:'p1',by:'u1',obj:{id:330,label:'Column B3 — Central Corridor',type:'IfcColumn'},created:ago(2)},
+    {id:uid(),title:'HVAC duct clash at grid C-4',desc:'Supply duct intersects sprinkler main at ceiling zone C-4. 150mm overlap in coordination model. Requires immediate re-routing.',status:'in_progress',priority:'high',proj:'p1',by:'u2',obj:{id:212,label:'Room 102 — East Office',type:'IfcSpace'},created:ago(5)},
+    {id:uid(),title:'Missing fire door — Room 103',desc:'FD60s rated door required at Room 103 entrance per fire spec. Current opening has no door. Gap 1100×2100mm.',status:'open',priority:'high',proj:'p1',by:'u1',obj:{id:240,label:'Room 103 — Conference',type:'IfcSpace'},created:ago(1)},
+    {id:uid(),title:'Paint mismatch — Level 1 corridor',desc:'Contractor applied RAL 9010 instead of RAL 9016 on corridor walls. Visible difference under LED lighting.',status:'resolved',priority:'low',proj:'p1',by:'u2',obj:{id:220,label:'Corridor — Central',type:'IfcSpace'},created:ago(12)},
+    {id:uid(),title:'Electrical panel access blocked',desc:'Construction materials in front of main panel room. 1m clear space not maintained per IEC 60364.',status:'open',priority:'medium',proj:'p1',by:'u1',obj:{id:231,label:'Room 103 — Conference',type:'IfcSpace'},created:ago(3)},
+    {id:uid(),title:'Window glazing seal failure',desc:'Double-glazed unit on north facade shows inter-pane condensation. Seal failure confirmed. Replacement needed.',status:'in_progress',priority:'medium',proj:'p1',by:'u2',obj:{id:113,label:'Room 101 — North Wall',type:'IfcWall'},created:ago(7)},
+    {id:uid(),title:'Floor tile lippage — Entrance',desc:'Porcelain tiles at main entrance: 3-4mm lippage exceeds 2mm tolerance. Trip hazard. Grinding or replacement needed.',status:'open',priority:'high',proj:'p1',by:'u1',obj:{id:101,label:'Room 101 — Reception',type:'IfcSpace'},created:ago(0)},
+  ];
+}
+
+function projIssues(){
+  let list = S.issues.filter(i=>i.proj===S.project?.id);
+  if(S.statusFlt) list = list.filter(i=>i.status===S.statusFlt);
+  return list.sort((a,b)=>new Date(b.created)-new Date(a.created));
+}
+
+/* ═══════════════════════════════════════════════════
+   PERSISTENCE
+   ═══════════════════════════════════════════════════ */
+function loadState(){
+  try{
+    const d = JSON.parse(localStorage.getItem('pp_v2'));
+    if(d && d.issues) S.issues = d.issues;
+    else S.issues = seedIssues();
+    if(d && d.user) S.user = d.user;
+  }catch{ S.issues = seedIssues(); }
+}
+function saveState(){
+  try{ localStorage.setItem('pp_v2', JSON.stringify({user:S.user, issues:S.issues})); }catch{}
+}
+
+/* ═══════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════ */
+function toast(msg){
+  const old = document.querySelector('.toast');
+  if(old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+
+/* ═══════════════════════════════════════════════════
+   THREE.JS VIEWER
+   ═══════════════════════════════════════════════════ */
+let tScene, tCamera, tRenderer, tControls, tRaycaster, tMouse;
+let tSelectables = [], tSelected = null, viewerReady = false, animId = null;
+
+function destroyViewer(){
+  if(animId) cancelAnimationFrame(animId);
+  animId = null;
+  if(tRenderer){
+    tRenderer.dispose();
+    const el = document.getElementById('viewer');
+    if(el && tRenderer.domElement.parentNode===el) el.removeChild(tRenderer.domElement);
+  }
+  tScene = null; tCamera = null; tRenderer = null; tControls = null;
+  tSelectables = []; tSelected = null; viewerReady = false;
+}
+
+function initViewer(){
+  const el = document.getElementById('viewer');
+  if(!el || viewerReady) return;
+
+  tScene = new THREE.Scene();
+  tScene.background = new THREE.Color(0x080c14);
+  tScene.fog = new THREE.FogExp2(0x080c14, 0.012);
+
+  const w = el.clientWidth || 800, h = el.clientHeight || 600;
+  tCamera = new THREE.PerspectiveCamera(50, w/h, 0.1, 500);
+  tCamera.position.set(18, 14, 22);
+
+  tRenderer = new THREE.WebGLRenderer({antialias:true});
+  tRenderer.setSize(w, h);
+  tRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  tRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  tRenderer.toneMappingExposure = 1.1;
+  tRenderer.shadowMap.enabled = true;
+  tRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  el.appendChild(tRenderer.domElement);
+
+  tControls = new OrbitControls(tCamera, tRenderer.domElement);
+  tControls.enableDamping = true;
+  tControls.dampingFactor = 0.06;
+  tControls.target.set(0, 1.6, 0);
+  tControls.maxPolarAngle = Math.PI * 0.48;
+  tControls.minDistance = 4;
+  tControls.maxDistance = 60;
+
+  // Lights
+  tScene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.0);
+  sun.position.set(15, 22, 10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -20; sun.shadow.camera.right = 20;
+  sun.shadow.camera.top = 20; sun.shadow.camera.bottom = -20;
+  tScene.add(sun);
+  tScene.add(new THREE.HemisphereLight(0x87ceeb, 0x2d1f0e, 0.3));
+  const fill = new THREE.DirectionalLight(0x6699cc, 0.2);
+  fill.position.set(-10, 8, -10);
+  tScene.add(fill);
+
+  // Ground
+  const gnd = new THREE.Mesh(
+    new THREE.PlaneGeometry(80, 80),
+    new THREE.MeshStandardMaterial({color:0x0d1117, roughness:0.95})
+  );
+  gnd.rotation.x = -Math.PI/2; gnd.position.y = -0.02; gnd.receiveShadow = true;
+  tScene.add(gnd);
+  tScene.add(new THREE.GridHelper(60, 60, 0x162030, 0x0e1520));
+
+  buildDemo(tScene);
+
+  tRaycaster = new THREE.Raycaster();
+  tMouse = new THREE.Vector2();
+
+  function animate() {
+    animId = requestAnimationFrame(animate);
+    if(tControls) tControls.update();
+    if(tRenderer && tScene && tCamera) tRenderer.render(tScene, tCamera);
+  }
+  animate();
+  viewerReady = true;
+
+  const onResize = () => {
+    const nw = el.clientWidth, nh = el.clientHeight;
+    if(nw > 0 && nh > 0 && tCamera){ tCamera.aspect = nw/nh; tCamera.updateProjectionMatrix(); tRenderer.setSize(nw, nh); }
+  };
+  window.addEventListener('resize', onResize);
+
+  tRenderer.domElement.addEventListener('click', (e) => {
+    if(!tRaycaster || !tCamera) return;
+    const r = tRenderer.domElement.getBoundingClientRect();
+    tMouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    tMouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    tRaycaster.setFromCamera(tMouse, tCamera);
+    const hits = tRaycaster.intersectObjects(tSelectables, false);
+    if(hits.length > 0){
+      selectMesh(hits[0].object);
+    } else {
+      deselectMesh();
+      S.selObj = null;
+      render();
+    }
+  });
+}
+
+function buildDemo(scene){
+  const WH = 3.4, WT = 0.2;
+  let eid = 100;
+
+  const wallMat = new THREE.MeshStandardMaterial({color:0x4a5a72, roughness:0.82, metalness:0.05});
+  const ceilMat = new THREE.MeshStandardMaterial({color:0x151d2a, roughness:0.92, side:THREE.DoubleSide});
+  const colMat = new THREE.MeshStandardMaterial({color:0x7a8a9a, roughness:0.45, metalness:0.35});
+  const doorMat = new THREE.MeshStandardMaterial({color:0x8b6914, roughness:0.65, metalness:0.1});
+  const roofMat = new THREE.MeshStandardMaterial({color:0x2a3448, roughness:0.85});
+  const stairMat = new THREE.MeshStandardMaterial({color:0x3a4858, roughness:0.75});
+  const claddingMat = new THREE.MeshStandardMaterial({color:0x3a4a62, roughness:0.7, metalness:0.15, transparent:true, opacity:0.3});
+
+  function bx(w,h,d){ return new THREE.BoxGeometry(w,h,d); }
+  function mk(geom, mat, pos, rotY, ud){
+    const m = new THREE.Mesh(geom, mat);
+    m.position.set(pos[0], pos[1], pos[2]);
+    if(rotY) m.rotation.y = rotY;
+    m.userData = {selectable:true, ...ud};
+    m.castShadow = true; m.receiveShadow = true;
+    scene.add(m); tSelectables.push(m);
+    return m;
+  }
+
+  // Room 101 NW
+  mk(bx(8,.12,6), new THREE.MeshStandardMaterial({color:0x1c2638,roughness:0.88}), [-4,.06,-5], 0,
+    {eid:++eid, label:'Room 101 — Reception', type:'IfcSpace', level:'Ground Floor',
+     material:'Concrete Slab', props:{Area:'48 m²',Volume:'163 m³',Function:'Reception'}});
+  mk(bx(8,WH,WT), wallMat, [-4,WH/2,-8], 0, {eid:++eid, label:'Room 101 — North Wall', type:'IfcWall', material:'Masonry 200mm', props:{Length:'8 m',Height:'3.4 m',FireRating:'60 min'}});
+  mk(bx(WT,WH,6), wallMat, [-8,WH/2,-5], 0, {eid:++eid, label:'Room 101 — West Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,WH,WT), wallMat, [-4,WH/2,-2], 0, {eid:++eid, label:'Room 101 — South Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(WT,WH,6), wallMat, [0,WH/2,-5], 0, {eid:++eid, label:'Room 101 — East Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,.08,6), ceilMat, [-4,WH,-5], 0, {eid:++eid, label:'Room 101 — Ceiling', type:'IfcCovering', material:'Plasterboard'});
+
+  // Room 102 NE
+  mk(bx(8,.12,6), new THREE.MeshStandardMaterial({color:0x1c2838,roughness:0.88}), [4,.06,-5], 0,
+    {eid:++eid, label:'Room 102 — East Office', type:'IfcSpace', level:'Ground Floor',
+     material:'Concrete Slab', props:{Area:'48 m²',Function:'Open Office'}});
+  mk(bx(8,WH,WT), wallMat, [4,WH/2,-8], 0, {eid:++eid, label:'Room 102 — North Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(WT,WH,6), wallMat, [8,WH/2,-5], 0, {eid:++eid, label:'Room 102 — East Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,WH,WT), wallMat, [4,WH/2,-2], 0, {eid:++eid, label:'Room 102 — South Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,.08,6), ceilMat, [4,WH,-5], 0, {eid:++eid, label:'Room 102 — Ceiling', type:'IfcCovering', material:'Plasterboard'});
+
+  // Room 103 SW
+  mk(bx(8,.12,6), new THREE.MeshStandardMaterial({color:0x1a2436,roughness:0.88}), [-4,.06,5], 0,
+    {eid:++eid, label:'Room 103 — Conference', type:'IfcSpace', level:'Ground Floor',
+     material:'Concrete Slab', props:{Area:'48 m²',Function:'Conference Room'}});
+  mk(bx(8,WH,WT), wallMat, [-4,WH/2,2], 0, {eid:++eid, label:'Room 103 — North Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(WT,WH,6), wallMat, [-8,WH/2,5], 0, {eid:++eid, label:'Room 103 — West Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,WH,WT), wallMat, [-4,WH/2,8], 0, {eid:++eid, label:'Room 103 — South Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,.08,6), ceilMat, [-4,WH,5], 0, {eid:++eid, label:'Room 103 — Ceiling', type:'IfcCovering', material:'Plasterboard'});
+
+  // Room 104 SE
+  mk(bx(8,.12,6), new THREE.MeshStandardMaterial({color:0x182030,roughness:0.88}), [4,.06,5], 0,
+    {eid:++eid, label:'Room 104 — Server Room', type:'IfcSpace', level:'Ground Floor',
+     material:'Raised Access Floor', props:{Area:'48 m²',Function:'IT Server Room',Cooling:'Precision AC 24kW'}});
+  mk(bx(8,WH,WT), wallMat, [4,WH/2,2], 0, {eid:++eid, label:'Room 104 — North Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(WT,WH,6), wallMat, [8,WH/2,5], 0, {eid:++eid, label:'Room 104 — East Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,WH,WT), wallMat, [4,WH/2,8], 0, {eid:++eid, label:'Room 104 — South Wall', type:'IfcWall', material:'Masonry 200mm'});
+  mk(bx(8,.08,6), ceilMat, [4,WH,5], 0, {eid:++eid, label:'Room 104 — Ceiling', type:'IfcCovering', material:'Plasterboard'});
+
+  // Central corridor
+  mk(bx(16,.10,4), new THREE.MeshStandardMaterial({color:0x222e40,roughness:0.88}), [0,.05,0], 0,
+    {eid:++eid, label:'Corridor — Central', type:'IfcSpace', level:'Ground Floor',
+     material:'Polished Concrete', props:{Area:'64 m²',Function:'Circulation'}});
+  mk(bx(16,.08,4), ceilMat, [0,WH,0], 0, {eid:++eid, label:'Corridor — Ceiling', type:'IfcCovering', material:'Plasterboard'});
+
+  // Doors
+  function addDoor(x,z,ry,label){ mk(bx(1.4,2.5,.1), doorMat, [x,1.25,z], ry, {eid:++eid, label, type:'IfcDoor', props:{Width:'1.4 m',Height:'2.5 m',FireRating:'FD30s'}}); }
+  addDoor(-4,-2,0,'Door D101 — Reception to Corridor');
+  addDoor(4,-2,0,'Door D102 — Office to Corridor');
+  addDoor(-4,2,0,'Door D103 — Conference to Corridor');
+  addDoor(4,2,0,'Door D104 — Server to Corridor');
+
+  // Columns
+  function addCol(x,z,label){ mk(new THREE.CylinderGeometry(.22,.22,WH,14), colMat, [x,WH/2,z], 0, {eid:++eid, label, type:'IfcColumn', props:{Diameter:'440mm',Material:'Reinforced Concrete',Grade:'C40/50'}}); }
+  addCol(0,-2,'Column A — Corridor North');
+  addCol(0,2,'Column B — Corridor South');
+  addCol(-8,-8,'Column C — NW Corner');
+  addCol(8,-8,'Column D — NE Corner');
+  addCol(-8,8,'Column E — SW Corner');
+  addCol(8,8,'Column F — SE Corner');
+
+  // Roof
+  mk(bx(18,.2,18), roofMat, [0,WH+.1,0], 0,
+    {eid:++eid, label:'Roof Slab — Level 1', type:'IfcRoof', material:'RC 200mm',
+     props:{Area:'324 m²',Insulation:'PIR 150mm',UValue:'0.18 W/m²K'}});
+
+  // Staircase
+  for(let i=0;i<8;i++){
+    mk(bx(1.6,.18,.35), stairMat, [9, WH*.06+i*(WH/8), -1.4+i*.35], 0,
+      {eid:++eid, label:'Stair Tread '+(i+1), type:'IfcStairFlight', props:{Riser:Math.round(WH/8)+'mm',Going:'350mm'}});
+  }
+  mk(bx(WT,WH,4), wallMat, [10,WH/2,0], 0, {eid:++eid, label:'Stair — East Wall', type:'IfcWall'});
+
+  // External cladding
+  [[-9,0,0],[9,0,0],[0,0,-9],[0,0,9]].forEach(([x,y,z],i)=>{
+    const isSide = i < 2;
+    const geom = isSide ? new THREE.PlaneGeometry(18, WH+.5) : new THREE.PlaneGeometry(18, WH+.5);
+    const m = new THREE.Mesh(geom, claddingMat);
+    m.position.set(x, WH/2, z);
+    if(isSide) m.rotation.y = i===0 ? Math.PI/2 : -Math.PI/2;
+    else if(i===3) m.rotation.y = Math.PI;
+    m.userData = {selectable:true, eid:++eid,
+      label:'External Cladding — '+['West','East','North','South'][i],
+      type:'IfcCurtainWall', material:'Curtain Wall Glazing',
+      props:{Area:((isSide?18:18)*(WH+.5)).toFixed(1)+' m²',UValue:'1.4 W/m²K'}};
+    scene.add(m); tSelectables.push(m);
+  });
+}
+
+function selectMesh(m){
+  deselectMesh();
+  tSelected = m;
+  m.userData._c = m.material.color.getHex();
+  m.userData._e = m.material.emissive ? m.material.emissive.getHex() : 0;
+  m.userData._o = m.material.opacity;
+  m.userData._t = m.material.transparent;
+  m.material.color.setHex(0x3b82f6);
+  if(m.material.emissive) m.material.emissive.setHex(0x1a3a6e);
+  m.material.transparent = true;
+  m.material.opacity = 1;
+  S.selObj = {
+    expressId: m.userData.eid,
+    label: m.userData.label,
+    type: m.userData.type,
+    props: m.userData.props || {},
+    level: m.userData.level || 'Ground Floor',
+    material: m.userData.material || '—'
+  };
+  render();
+}
+
+function deselectMesh(){
+  if(!tSelected) return;
+  const m = tSelected;
+  if(m.userData._c !== undefined){
+    m.material.color.setHex(m.userData._c);
+    if(m.material.emissive) m.material.emissive.setHex(m.userData._e || 0);
+    m.material.opacity = m.userData._o ?? 1;
+    m.material.transparent = m.userData._t ?? false;
+  }
+  tSelected = null;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDERING
+   ═══════════════════════════════════════════════════ */
+const $ = document.getElementById('app');
+
+function render(){
+  if(!S.user){
+    renderLogin();
+  } else {
+    S.project = PROJECT;
+    renderDash();
+  }
+}
+
+function renderLogin(){
+  const reg = S.loginTab === 'register';
+  $.innerHTML = `
+  <div class="lp"><div class="lc">
+    <div class="lc-ico">🏗️</div>
+    <h1>PropertyPulse</h1>
+    <p class="lc-sub">IFC Viewer & Issue Tracker</p>
+    <form id="loginForm" autocomplete="off">
+      ${reg ? `<div class="fg"><label>Full Name</label>
+        <input class="fi" id="fName" placeholder="Your name" required></div>` : ''}
+      <div class="fg"><label>Email</label>
+        <input class="fi" id="fEmail" type="email" placeholder="you@company.com" required></div>
+      <div class="fg"><label>Password</label>
+        <input class="fi" id="fPass" type="password" placeholder="••••••••" required minlength="6"></div>
+      <div id="formError"></div>
+      <button class="btn btn-p btn-f" type="submit" id="formBtn">${reg ? 'Create Account' : 'Sign In'}</button>
+    </form>
+    <div class="lc-foot">
+      ${reg ? 'Already have an account?' : "Don't have an account?"}
+      <button id="toggleTab">${reg ? 'Sign in' : 'Register'}</button>
     </div>
+    <div class="lc-demo"><p>Demo Credentials</p>
+      <code>admin@demo.com / demo123</code></div>
+  </div></div>`;
 
-    <!-- ==================== MAIN APP SHELL ==================== -->
-    <div id="app-shell" class="hidden h-screen w-screen flex flex-col">
-        
-        <!-- Top Navbar -->
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-30 shadow-sm">
-            <div class="flex items-center gap-4">
-                <button id="mobile-menu-btn" class="lg:hidden text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                </button>
-                <h1 class="font-bold text-xl text-gray-800 flex items-center gap-2">
-                    <div class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-bold">P</div>
-                    PropTrack
-                </h1>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="hidden sm:flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
-                    <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm" id="header-avatar">A</div>
-                    <span class="text-sm font-medium text-gray-700" id="header-username">Admin</span>
-                </div>
-                <button id="logout-btn" class="text-sm text-gray-500 hover:text-red-600 font-medium transition">Logout</button>
-            </div>
-        </header>
+  const form = document.getElementById('loginForm');
+  const errDiv = document.getElementById('formError');
+  const emailEl = document.getElementById('fEmail');
+  const passEl = document.getElementById('fPass');
+  const nameEl = document.getElementById('fName');
 
-        <div class="flex flex-1 overflow-hidden">
-            <!-- Sidebar -->
-            <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col transition-all duration-300 fixed lg:relative z-20 h-[calc(100%-4rem)] -translate-x-full lg:translate-x-0">
-                <nav class="flex-1 py-6">
-                    <a href="#/dashboard" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"></path></svg>
-                        Dashboard
-                    </a>
-                    <a href="#/models" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                        Models
-                    </a>
-                    <a href="#/issues" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                        Issues
-                    </a>
-                    <a href="#/settings" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        Settings
-                    </a>
-                </nav>
-            </aside>
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    errDiv.innerHTML = '';
 
-            <!-- Sidebar Overlay for Mobile -->
-            <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-10 lg:hidden" onclick="toggleSidebar()"></div>
+    const email = emailEl.value.trim();
+    const pass = passEl.value;
 
-            <!-- Main Content Area -->
-            <main class="flex-1 bg-gray-50 overflow-y-auto scrollbar-thin">
-                
-                <!-- PAGE: DASHBOARD -->
-                <div id="page-dashboard" class="page flex-col p-6 lg:p-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Dashboard</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                            <p class="text-sm font-medium text-gray-500">Total Models</p>
-                            <p class="text-3xl font-bold text-gray-800 mt-2" id="stat-models">0</p>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                            <p class="text-sm font-medium text-gray-500">Open Issues</p>
-                            <p class="text-3xl font-bold text-red-600 mt-2" id="stat-open">0</p>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                            <p class="text-sm font-medium text-gray-500">Resolved Issues</p>
-                            <p class="text-3xl font-bold text-green-600 mt-2" id="stat-closed">0</p>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="font-bold text-gray-700 mb-4">Recent Activity</h3>
-                        <div id="recent-issues-list" class="space-y-3"></div>
-                    </div>
-                </div>
+    if(!email || !pass){
+      errDiv.innerHTML = '<div class="err">Please fill in all fields.</div>';
+      return;
+    }
 
-                <!-- PAGE: MODELS -->
-                <div id="page-models" class="page flex-col p-6 lg:p-8">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-800">IFC Models</h2>
-                        <label class="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Upload New Model
-                            <input type="file" id="global-ifc-upload" accept=".ifc" hidden>
-                        </label>
-                    </div>
-                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
-                        <p class="text-sm text-blue-800">📁 <strong>IFC Viewer Ready:</strong> Upload any IFC file to view in 3D. The viewer supports full navigation, element selection, and issue linking.</p>
-                    </div>
-                    <div id="models-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
-                </div>
+    if(reg){
+      const name = nameEl ? nameEl.value.trim() : '';
+      if(!name){
+        errDiv.innerHTML = '<div class="err">Name is required.</div>';
+        return;
+      }
+      if(USERS.find(u => u.email === email)){
+        errDiv.innerHTML = '<div class="err">An account with this email already exists.</div>';
+        return;
+      }
+      const newUser = { id:uid(), name, email, pass, role:'user' };
+      USERS.push(newUser);
+      S.user = newUser;
+      saveState();
+      toast('Account created! Welcome, ' + name.split(' ')[0] + '!');
+      render();
+    } else {
+      const found = USERS.find(u => u.email === email && u.pass === pass);
+      if(!found){
+        errDiv.innerHTML = '<div class="err">Invalid email or password. Try: admin@demo.com / demo123</div>';
+        return;
+      }
+      S.user = found;
+      saveState();
+      toast('Welcome back, ' + found.name.split(' ')[0] + '!');
+      render();
+    }
+  });
 
-                <!-- PAGE: ISSUES -->
-                <div id="page-issues" class="page flex-col p-6 lg:p-8">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <h2 class="text-2xl font-bold text-gray-800">All Issues</h2>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <input type="text" id="issue-search" placeholder="Search issues..." class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full sm:w-64 focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <select id="issue-filter-global" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                                <option value="All">All Statuses</option>
-                                <option value="Open">Open</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Closed">Closed</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left">
-                                <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b">
-                                    <tr>
-                                        <th class="px-6 py-3">Title</th>
-                                        <th class="px-6 py-3 hidden md:table-cell">Model</th>
-                                        <th class="px-6 py-3">Status</th>
-                                        <th class="px-6 py-3 hidden sm:table-cell">Priority</th>
-                                        <th class="px-6 py-3 hidden sm:table-cell">Element ID</th>
-                                        <th class="px-6 py-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="issues-table-body" class="divide-y divide-gray-100"></tbody>
-                            </table>
-                        </div>
-                        <div id="issues-empty-state" class="hidden p-8 text-center text-gray-400">
-                            No issues match your search.
-                        </div>
-                    </div>
-                </div>
+  document.getElementById('toggleTab').addEventListener('click', function(){
+    S.loginTab = reg ? 'login' : 'register';
+    render();
+  });
+}
 
-                <!-- PAGE: VIEWER (Split Screen) -->
-                <div id="page-viewer" class="page flex-row h-[calc(100vh-4rem)] !p-0 overflow-hidden">
-                    <div class="flex-1 relative bg-slate-900">
-                        <div id="viewer-container" class="w-full h-full"></div>
-                        <div id="element-popup" class="hidden absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg shadow-xl w-72 backdrop-blur-sm border border-white/10 z-10">
-                            <h3 class="font-bold text-md mb-2 text-indigo-300">Element Properties</h3>
-                            <div class="space-y-1 text-sm">
-                                <p><span class="text-gray-400">ExpressID:</span> <span id="prop-id" class="font-mono">-</span></p>
-                                <p><span class="text-gray-400">Type:</span> <span id="prop-type">-</span></p>
-                                <p><span class="text-gray-400">Name:</span> <span id="prop-name">-</span></p>
-                                <p><span class="text-gray-400">Material:</span> <span id="prop-mat">-</span></p>
-                            </div>
-                            <button id="create-issue-from-element" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded text-sm transition">Create Issue for Element</button>
-                            <button id="close-popup" class="mt-2 text-xs text-gray-400 hover:text-white transition w-full">Close</button>
-                        </div>
-                        <div id="loader-overlay" class="hidden absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-                            <div class="text-white text-center">
-                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-                                <p class="font-semibold">Loading IFC Model...</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Viewer Issue Panel -->
-                    <div class="w-full md:w-96 bg-white border-l border-gray-200 flex flex-col h-[40vh] md:h-full shrink-0">
-                        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                            <h3 class="font-bold text-gray-800">Model Issues</h3>
-                            <button id="toggle-viewer-form" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-medium">+ New</button>
-                        </div>
-                        <div id="viewer-form" class="hidden border-b p-4 bg-gray-50 space-y-2">
-                            <input type="text" id="v-issue-title" placeholder="Issue Title" class="w-full p-2 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                            <textarea id="v-issue-desc" placeholder="Description..." rows="2" class="w-full p-2 border rounded text-sm outline-none resize-none focus:ring-2 focus:ring-indigo-500"></textarea>
-                            <select id="v-issue-status" class="w-full p-2 border rounded text-sm bg-white outline-none">
-                                <option>Open</option>
-                                <option>In Progress</option>
-                                <option>Closed</option>
-                            </select>
-                            <select id="v-issue-priority" class="w-full p-2 border rounded text-sm bg-white outline-none">
-                                <option value="low">Low Priority</option>
-                                <option value="medium" selected>Medium Priority</option>
-                                <option value="high">High Priority</option>
-                            </select>
-                            <div id="v-linked-info" class="hidden text-xs text-indigo-600 bg-indigo-50 p-2 rounded">Linked to Element: <strong id="v-linked-id">0</strong></div>
-                            <div class="flex gap-2">
-                                <button id="save-v-issue" class="flex-1 bg-indigo-600 text-white py-1.5 rounded text-sm">Save Issue</button>
-                                <button id="cancel-v-issue" class="px-4 bg-gray-200 text-gray-700 py-1.5 rounded text-sm">Cancel</button>
-                            </div>
-                        </div>
-                        <div id="viewer-issues-list" class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin bg-gray-50"></div>
-                    </div>
-                </div>
+function renderDash(){
+  destroyViewer();
+  const issues = projIssues();
+  const total = issues.length;
+  const openN = S.issues.filter(i => i.proj === S.project.id && i.status === 'open').length;
+  const critN = S.issues.filter(i => i.proj === S.project.id && i.priority === 'critical' && i.status !== 'closed').length;
 
-                <!-- PAGE: SETTINGS -->
-                <div id="page-settings" class="page flex-col p-6 lg:p-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Settings</h2>
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-                        <h3 class="font-semibold text-gray-700 mb-4 border-b pb-2">Profile Information</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input type="text" id="set-name" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input type="email" id="set-email" class="w-full p-2 border border-gray-300 rounded-lg outline-none bg-gray-50" disabled>
-                            </div>
-                            <button id="save-settings" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">Save Changes</button>
-                        </div>
-                        <div class="mt-8 border-t pt-4">
-                            <h3 class="font-semibold text-red-600 mb-2">Data Management</h3>
-                            <button id="clear-data-btn" class="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm hover:bg-red-100 transition">Reset All Data & Logout</button>
-                        </div>
-                    </div>
-                </div>
-
-            </main>
-        </div>
+  $.innerHTML = `
+  <div class="dash">
+    <header class="hdr">
+      <div class="hdr-l">
+        <button class="hdr-m" id="togBtn" title="Toggle sidebar">☰</button>
+        <div class="hdr-t">🏗️ PropertyPulse</div>
+      </div>
+      <div class="hdr-r">
+        <span class="hdr-u">${esc(S.user.name)} · <span style="color:var(--tx3)">${esc(S.user.role)}</span></span>
+        <button class="hdr-lb" id="logoutBtn">Sign out</button>
+      </div>
+    </header>
+    <div class="main">
+      <div class="vw-wrap" id="viewerWrap">
+        <div id="viewer"></div>
+        <div class="vb"><span class="vb-mode">Interactive 3D Building Model</span> — click any element to inspect</div>
+        <div class="vh"><b>Controls</b><br>🖱 Left drag — Orbit<br>🖱 Right drag — Pan<br>🖱 Scroll — Zoom<br>👆 Click — Select</div>
+        ${S.selObj ? propPanelHTML() : ''}
+      </div>
+      ${S.sbOpen ? `<aside class="sb" id="sidebar">
+        ${S.showForm ? formHTML() : S.viewIssue ? detailHTML() : listHTML(issues, total, openN, critN)}
+      </aside>` : ''}
     </div>
+  </div>`;
 
-    <script>
-        // ==================== DATA MANAGEMENT ====================
-        let currentUser = null;
-        let selectedExpressId = null;
-        let currentViewerModelId = null;
+  // Bind header
+  document.getElementById('togBtn').addEventListener('click', () => { S.sbOpen = !S.sbOpen; render(); });
+  document.getElementById('logoutBtn').addEventListener('click', () => { S.user = null; S.selObj = null; S.showForm = false; S.viewIssue = null; saveState(); toast('Signed out'); render(); });
 
-        // Initialize database with dummy data
-        const initDB = () => {
-            if (!localStorage.getItem('pt_initialized')) {
-                // Users
-                localStorage.setItem('pt_users', JSON.stringify([
-                    { id: 1, name: 'Admin User', email: 'admin@test.com', password: 'password' },
-                    { id: 2, name: 'Sarah Johnson', email: 'sarah@test.com', password: 'password' },
-                    { id: 3, name: 'Mike Chen', email: 'mike@test.com', password: 'password' }
-                ]));
-                
-                // Models
-                localStorage.setItem('pt_models', JSON.stringify([
-                    { id: 1, name: 'Main_Office_Building.ifc', date: '2024-01-15', size: '24.5 MB', description: '5-story office building with basement' },
-                    { id: 2, name: 'Residential_Complex.ifc', date: '2024-01-20', size: '45.2 MB', description: 'Mixed-use residential development' },
-                    { id: 3, name: 'Warehouse_Facility.ifc', date: '2024-01-25', size: '12.1 MB', description: 'Industrial warehouse with loading docks' },
-                    { id: 4, name: 'Hospital_Wing.ifc', date: '2024-02-01', size: '67.8 MB', description: 'Medical facility extension' }
-                ]));
-                
-                // Issues with dummy data
-                localStorage.setItem('pt_issues', JSON.stringify([
-                    { id: 101, title: 'Crack in Foundation Slab', description: 'Structural crack observed near grid A-2. Needs immediate inspection.', status: 'Open', priority: 'high', modelId: 1, expressId: 142, date: '2024-01-16', createdBy: 'admin@test.com' },
-                    { id: 102, title: 'Missing Window Frame', description: 'Window W-04 missing from 2nd floor east wall plan.', status: 'In Progress', priority: 'medium', modelId: 1, expressId: 205, date: '2024-01-18', createdBy: 'sarah@test.com' },
-                    { id: 103, title: 'Incorrect Door Swing', description: 'Main entrance door swings inward instead of outward, violating code.', status: 'Open', priority: 'high', modelId: 2, expressId: 312, date: '2024-01-22', createdBy: 'admin@test.com' },
-                    { id: 104, title: 'Clashing HVAC Duct', description: 'HVAC duct route clashes with structural beam at coordinates (12.5, 8.3, 4.2).', status: 'Closed', priority: 'high', modelId: 2, expressId: null, date: '2024-01-23', createdBy: 'mike@test.com' },
-                    { id: 105, title: 'Wrong Wall Material', description: 'Firewall specified as drywall, should be concrete per specifications.', status: 'Open', priority: 'medium', modelId: 3, expressId: 88, date: '2024-01-26', createdBy: 'sarah@test.com' },
-                    { id: 106, title: 'Electrical Outlet Placement', description: 'Outlets missing from conference room north wall.', status: 'In Progress', priority: 'low', modelId: 1, expressId: 423, date: '2024-01-28', createdBy: 'admin@test.com' },
-                    { id: 107, title: 'Plumbing Pipe Interference', description: 'Water pipe conflicts with structural column.', status: 'Open', priority: 'high', modelId: 4, expressId: 567, date: '2024-02-02', createdBy: 'mike@test.com' }
-                ]));
-                
-                localStorage.setItem('pt_initialized', 'true');
-            }
-        };
+  // Init 3D viewer
+  setTimeout(() => { initViewer(); }, 100);
 
-        const DB = {
-            get: (key) => { 
-                try { 
-                    const data = localStorage.getItem(key);
-                    return data ? JSON.parse(data) : [];
-                } catch(e) { 
-                    return []; 
-                }
-            },
-            set: (key, val) => localStorage.setItem(key, JSON.stringify(val))
-        };
+  // Bind sidebar interactions
+  bindSidebar();
+}
 
-        // Helper functions
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type === 'error' ? 'bg-red-600' : 'bg-green-600'}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
+/* ═══════════════════════════════════════════════════
+   HTML TEMPLATES
+   ═══════════════════════════════════════════════════ */
+function propPanelHTML(){
+  const o = S.selObj;
+  const props = o.props || {};
+  const rows = Object.entries(props).map(([k,v]) => `<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join('');
+  return `<div class="pp" id="propPanel">
+    <div class="pp-hd">
+      <h3>${esc(o.label)}</h3>
+      <button class="pp-x" id="ppClose">✕</button>
+    </div>
+    <span class="pp-type">${esc(o.type || 'Element')}</span>
+    <table class="pp-tbl"><tbody>
+      <tr><td>Express ID</td><td>${o.expressId}</td></tr>
+      <tr><td>Type</td><td>${esc(o.type)}</td></tr>
+      <tr><td>Level</td><td>${esc(o.level)}</td></tr>
+      <tr><td>Material</td><td>${esc(o.material)}</td></tr>
+      ${rows}
+    </tbody></table>
+    <button class="btn btn-o btn-f" id="ppCreate">＋ Create Issue for This Object</button>
+  </div>`;
+}
 
-        // ==================== AUTHENTICATION ====================
-        let isLoginMode = true;
-        
-        document.getElementById('auth-toggle-btn').onclick = () => {
-            isLoginMode = !isLoginMode;
-            document.getElementById('register-fields').classList.toggle('hidden', isLoginMode);
-            document.getElementById('auth-btn').textContent = isLoginMode ? 'Sign In' : 'Create Account';
-            document.getElementById('auth-toggle-text').textContent = isLoginMode ? "Don't have an account? " : "Already have an account? ";
-            document.getElementById('auth-toggle-btn').textContent = isLoginMode ? 'Register' : 'Sign In';
-            document.getElementById('auth-error').classList.add('hidden');
-        };
+function listHTML(issues, total, openN, critN){
+  const filters = ['','open','in_progress','resolved','closed'];
+  const filterLabels = { '':'All', 'open':'Open', 'in_progress':'In Progress', 'resolved':'Resolved', 'closed':'Closed' };
+  return `<div class="sb-hd">
+    <h2>Issues <span class="cnt">${total}</span></h2>
+    <button class="btn btn-p" id="btnNew">＋ New</button>
+  </div>
+  <div class="flt">${filters.map(f =>
+    `<button class="flt-b ${S.statusFlt===f?'on':''}" data-filter="${f}">${filterLabels[f]}</button>`
+  ).join('')}</div>
+  <div class="il">
+    ${issues.length === 0 ? '<div class="il-empty">No issues found.<br>Create one to get started.</div>' : ''}
+    ${issues.map(i => `<div class="ic" data-issue-id="${i.id}">
+      <div class="ic-top">
+        <span class="pri">${({critical:'🔴',high:'🟠',medium:'🟡',low:'🟢'})[i.priority]||'⚪'}</span>
+        <span class="badge b-${i.status}">${i.status.replace('_',' ')}</span>
+      </div>
+      <h3>${esc(i.title)}</h3>
+      <div class="ic-d">${esc(i.desc)}</div>
+      <div class="ic-m">
+        <span>📍 ${esc(i.obj?.label) || 'No object'}</span>
+        <span>${fmtDate(i.created)}</span>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
 
-        document.getElementById('auth-form').onsubmit = (e) => {
-            e.preventDefault();
-            const errEl = document.getElementById('auth-error');
-            errEl.classList.add('hidden');
-            const email = document.getElementById('auth-email').value.trim();
-            const pw = document.getElementById('auth-password').value;
-            
-            let users = DB.get('pt_users');
-            if (isLoginMode) {
-                const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pw);
-                if (user) { 
-                    login(user); 
-                } else { 
-                    errEl.textContent = 'Invalid email or password. Try admin@test.com / password';
-                    errEl.classList.remove('hidden'); 
-                }
-            } else {
-                if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
-                    errEl.textContent = 'Email already in use.';
-                    errEl.classList.remove('hidden');
-                    return;
-                }
-                const newUser = { id: Date.now(), name: document.getElementById('auth-name').value || 'User', email, password: pw };
-                users.push(newUser);
-                DB.set('pt_users', users);
-                login(newUser);
-            }
-        };
+function formHTML(){
+  const o = S.selObj;
+  return `<div class="sf">
+    <div class="sf-hd"><h2>New Issue</h2>
+      <button class="btn btn-s" id="btnCancelForm">Cancel</button></div>
+    <div class="sf-bd">
+      <div class="sf-lb"><label>Title *</label>
+        <input class="sf-in" id="issueTitle" placeholder="Brief description" required></div>
+      <div class="sf-lb"><label>Description</label>
+        <textarea class="sf-ta" id="issueDesc" placeholder="Detailed notes, observations, measurements..."></textarea></div>
+      <div class="sf-lb"><label>Priority</label>
+        <select class="sf-sel" id="issuePri">
+          <option value="low">🟢 Low</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="high">🟠 High</option>
+          <option value="critical">🔴 Critical</option>
+        </select></div>
+      <div class="sf-lb"><label>Status</label>
+        <select class="sf-sel" id="issueStatus">
+          <option value="open" selected>Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select></div>
+      ${o ? `<div class="sf-obj">📍 <div><strong>Linked:</strong> ${esc(o.label)}<br>
+        <small style="color:var(--tx3)">${esc(o.type)} · ID ${o.expressId}</small></div></div>` : ''}
+    </div>
+    <div class="sf-ft">
+      <button class="btn btn-p" id="btnSubmitIssue">Create Issue</button>
+    </div>
+  </div>`;
+}
 
-        function login(user) {
-            currentUser = user;
-            localStorage.setItem('pt_session', JSON.stringify(user));
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('app-shell').classList.remove('hidden');
-            updateHeader();
-            location.hash = '#/dashboard';
-        }
+function detailHTML(){
+  const i = S.viewIssue;
+  const statusOpts = ['open','in_progress','resolved','closed']
+    .map(s => `<option value="${s}" ${i.status===s?'selected':''}>${s.replace('_',' ')}</option>`).join('');
+  const priOpts = ['low','medium','high','critical']
+    .map(p => `<option value="${p}" ${i.priority===p?'selected':''}>${p}</option>`).join('');
 
-        function logout() {
-            localStorage.removeItem('pt_session');
-            currentUser = null;
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app-shell').classList.add('hidden');
-            location.hash = '';
-        }
+  return `<div class="sd">
+    <div class="sd-hd">
+      <button class="sd-back" id="btnBackList">← All Issues</button>
+      <div class="sd-acts">
+        <button class="btn btn-s" id="btnToggleEdit" style="padding:5px 12px;font-size:.76rem">
+          ${S.editMode ? 'Cancel' : 'Edit'}</button>
+        <button class="btn btn-d" id="btnDelete" style="padding:5px 12px;font-size:.76rem">Delete</button>
+      </div>
+    </div>
+    <div class="sd-bd">
+      <h2>${esc(i.title)}</h2>
+      <div class="sd-badges">
+        <span class="badge b-${i.status}">${i.status.replace('_',' ')}</span>
+        <span class="badge b-${i.priority}">${i.priority}</span>
+      </div>
+      ${S.editMode ? `<div style="margin-bottom:16px">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <select class="sf-sel" id="editStatus" style="flex:1">${statusOpts}</select>
+          <select class="sf-sel" id="editPri" style="flex:1">${priOpts}</select>
+        </div>
+        <button class="btn btn-p" id="btnSaveEdit" style="width:100%">Save Changes</button>
+      </div>` : ''}
+      <div class="sd-desc">${esc(i.desc) || '<em style="color:var(--tx3)">No description provided.</em>'}</div>
+      ${i.obj ? `<div class="sd-sec"><h4>Linked Object</h4>
+        <p>📍 ${esc(i.obj.label)}<br><span style="color:var(--tx3)">Type: ${esc(i.obj.type)} · Express ID: ${i.obj.id}</span></p></div>` : ''}
+      <div class="sd-sec"><h4>Details</h4>
+        <p>Created by: ${esc(userName(i.by))}</p>
+        <p>Created: ${fmtDT(i.created)}</p>
+        ${i.updated ? `<p>Updated: ${fmtDT(i.updated)}</p>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
 
-        document.getElementById('logout-btn').onclick = logout;
-        
-        function updateHeader() {
-            document.getElementById('header-username').textContent = currentUser.name;
-            document.getElementById('header-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
-        }
+/* ═══════════════════════════════════════════════════
+   SIDEBAR EVENT BINDING
+   ═══════════════════════════════════════════════════ */
+function bindSidebar(){
+  // Property panel buttons
+  const ppClose = document.getElementById('ppClose');
+  if(ppClose) ppClose.addEventListener('click', () => { S.selObj = null; deselectMesh(); render(); });
+  const ppCreate = document.getElementById('ppCreate');
+  if(ppCreate) ppCreate.addEventListener('click', () => { S.showForm = true; S.editMode = false; render(); });
 
-        // ==================== MOBILE SIDEBAR ====================
-        window.toggleSidebar = () => {
-            const sb = document.getElementById('sidebar');
-            const ov = document.getElementById('sidebar-overlay');
-            sb.classList.toggle('-translate-x-full');
-            ov.classList.toggle('hidden');
-        };
-        document.getElementById('mobile-menu-btn').onclick = toggleSidebar;
+  // Issue list
+  const btnNew = document.getElementById('btnNew');
+  if(btnNew) btnNew.addEventListener('click', () => { S.showForm = true; S.editMode = false; render(); });
 
-        // ==================== ROUTER ====================
-        function handleRoute() {
-            if (!currentUser) return;
-            const hash = location.hash || '#/dashboard';
-            
-            document.getElementById('sidebar').classList.add('-translate-x-full');
-            document.getElementById('sidebar-overlay').classList.add('hidden');
+  // Filter buttons
+  document.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', function(){
+      S.statusFlt = this.dataset.filter;
+      render();
+    });
+  });
 
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  // Issue cards
+  document.querySelectorAll('[data-issue-id]').forEach(card => {
+    card.addEventListener('click', function(){
+      const issue = S.issues.find(i => i.id === this.dataset.issueId);
+      if(issue){ S.viewIssue = issue; S.showForm = false; S.editMode = false; render(); }
+    });
+  });
 
-            const pageId = hash.replace('#/', '').split('-')[0];
-            const pageEl = document.getElementById(`page-${pageId}`);
-            
-            if (pageEl) {
-                pageEl.classList.add('active');
-                const link = document.querySelector(`a[href="#/${pageId}"]`);
-                if(link) link.classList.add('active');
-            } else {
-                document.getElementById('page-dashboard').classList.add('active');
-                document.querySelector('a[href="#/dashboard"]').classList.add('active');
-            }
+  // Form
+  const btnCancel = document.getElementById('btnCancelForm');
+  if(btnCancel) btnCancel.addEventListener('click', () => { S.showForm = false; render(); });
 
-            // Page specific initialization
-            if (hash.startsWith('#/dashboard')) renderDashboard();
-            if (hash.startsWith('#/models')) renderModels();
-            if (hash.startsWith('#/issues')) renderIssuesPage();
-            if (hash.startsWith('#/viewer')) initViewerPage();
-            if (hash.startsWith('#/settings')) renderSettings();
-        }
-        
-        window.addEventListener('hashchange', handleRoute);
+  const btnSubmit = document.getElementById('btnSubmitIssue');
+  if(btnSubmit) btnSubmit.addEventListener('click', () => {
+    const title = document.getElementById('issueTitle')?.value.trim();
+    if(!title){ toast('Title is required'); return; }
+    const desc = document.getElementById('issueDesc')?.value.trim() || '';
+    const pri = document.getElementById('issuePri')?.value || 'medium';
+    const status = document.getElementById('issueStatus')?.value || 'open';
+    const issue = {
+      id: uid(), title: title, desc: desc, status: status, priority: pri,
+      proj: S.project.id, by: S.user.id,
+      obj: S.selObj ? { id: S.selObj.expressId, label: S.selObj.label, type: S.selObj.type } : null,
+      created: new Date().toISOString()
+    };
+    S.issues.unshift(issue);
+    saveState();
+    S.showForm = false;
+    S.viewIssue = issue;
+    S.editMode = false;
+    toast('Issue created!');
+    render();
+  });
 
-        // ==================== DASHBOARD ====================
-        function renderDashboard() {
-            const issues = DB.get('pt_issues');
-            const models = DB.get('pt_models');
-            document.getElementById('stat-models').textContent = models.length;
-            document.getElementById('stat-open').textContent = issues.filter(i => i.status === 'Open').length;
-            document.getElementById('stat-closed').textContent = issues.filter(i => i.status === 'Closed').length;
+  // Detail
+  const btnBack = document.getElementById('btnBackList');
+  if(btnBack) btnBack.addEventListener('click', () => { S.viewIssue = null; S.editMode = false; render(); });
 
-            const recent = document.getElementById('recent-issues-list');
-            if (issues.length === 0) { 
-                recent.innerHTML = '<p class="text-gray-400 text-sm">No issues yet. Create one from the Issues page!</p>'; 
-                return;
-            }
-            
-            recent.innerHTML = issues.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5).map(issue => {
-                const modelName = models.find(m => m.id === issue.modelId)?.name || 'Unknown Model';
-                const statusClass = issue.status === 'Open' ? 'status-open' : issue.status === 'In Progress' ? 'status-progress' : 'status-closed';
-                return `<div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition cursor-pointer" onclick="location.hash='#/issues'">
-                    <div>
-                        <p class="font-medium text-gray-800 text-sm">${escapeHtml(issue.title)}</p>
-                        <p class="text-xs text-gray-500">${modelName} ${issue.expressId ? `• Element: ${issue.expressId}` : ''}</p>
-                    </div>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-medium ${statusClass}">${issue.status}</span>
-                </div>`;
-            }).join('');
-        }
+  const btnEdit = document.getElementById('btnToggleEdit');
+  if(btnEdit) btnEdit.addEventListener('click', () => { S.editMode = !S.editMode; render(); });
 
-        // ==================== MODELS ====================
-        function renderModels() {
-            const models = DB.get('pt_models');
-            const grid = document.getElementById('models-grid');
-            grid.innerHTML = models.map(m => `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between hover:shadow-md transition">
-                    <div>
-                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-4">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"></path></svg>
-                        </div>
-                        <h3 class="font-bold text-gray-800 mb-1 truncate">${m.name}</h3>
-                        <p class="text-xs text-gray-500">Uploaded: ${m.date} • ${m.size}</p>
-                        <p class="text-xs text-gray-400 mt-2">${m.description || 'Building Information Model'}</p>
-                    </div>
-                    <button onclick="openModelInViewer(${m.id})" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg text-sm transition">
-                        Open in 3D Viewer
-                    </button>
-                </div>
-            `).join('');
-        }
+  const btnSave = document.getElementById('btnSaveEdit');
+  if(btnSave) btnSave.addEventListener('click', () => {
+    const ns = document.getElementById('editStatus')?.value;
+    const np = document.getElementById('editPri')?.value;
+    const idx = S.issues.findIndex(i => i.id === S.viewIssue.id);
+    if(idx >= 0){
+      S.issues[idx].status = ns;
+      S.issues[idx].priority = np;
+      S.issues[idx].updated = new Date().toISOString();
+      S.viewIssue = S.issues[idx];
+      S.editMode = false;
+      saveState();
+      toast('Issue updated!');
+      render();
+    }
+  });
 
-        window.openModelInViewer = (modelId) => {
-            currentViewerModelId = modelId;
-            location.hash = '#/viewer';
-        };
+  const btnDel = document.getElementById('btnDelete');
+  if(btnDel) btnDel.addEventListener('click', () => {
+    if(!confirm('Delete this issue permanently?')) return;
+    S.issues = S.issues.filter(i => i.id !== S.viewIssue.id);
+    saveState();
+    S.viewIssue = null;
+    S.editMode = false;
+    toast('Issue deleted');
+    render();
+  });
+}
 
-        // Global IFC upload
-        document.getElementById('global-ifc-upload').onchange = (e) => {
-            if (e.target.files.length > 0) {
-                window._pendingIfcFile = e.target.files[0];
-                location.hash = '#/viewer';
-            }
-        };
-
-        // ==================== ISSUES PAGE ====================
-        function renderIssuesPage() {
-            const issues = DB.get('pt_issues');
-            const models = DB.get('pt_models');
-            const search = document.getElementById('issue-search').value.toLowerCase();
-            const filter = document.getElementById('issue-filter-global').value;
-
-            let filtered = issues;
-            if (filter !== 'All') filtered = filtered.filter(i => i.status === filter);
-            if (search) filtered = filtered.filter(i => i.title.toLowerCase().includes(search) || i.description.toLowerCase().includes(search));
-
-            const tbody = document.getElementById('issues-table-body');
-            const emptyState = document.getElementById('issues-empty-state');
-            
-            if (filtered.length === 0) {
-                tbody.innerHTML = '';
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            emptyState.classList.add('hidden');
-
-            tbody.innerHTML = filtered.map(i => {
-                const mName = models.find(m => m.id === i.modelId)?.name || 'Unknown';
-                const statusClass = i.status === 'Open' ? 'status-open' : i.status === 'In Progress' ? 'status-progress' : 'status-closed';
-                const priorityClass = i.priority === 'high' ? 'text-red-600' : i.priority === 'medium' ? 'text-orange-600' : 'text-green-600';
-                return `<tr class="hover:bg-gray-50 transition">
-                    <td class="px-6 py-4 font-medium text-gray-800">${escapeHtml(i.title)}</td>
-                    <td class="px-6 py-4 text-gray-500 hidden md:table-cell">${escapeHtml(mName)}</td>
-                    <td class="px-6 py-4"><span class="text-xs px-2 py-0.5 rounded-full font-medium ${statusClass}">${i.status}</span></td>
-                    <td class="px-6 py-4 hidden sm:table-cell"><span class="text-xs font-medium ${priorityClass}">${i.priority || 'medium'}</span></td>
-                    <td class="px-6 py-4 text-gray-500 font-mono text-xs hidden sm:table-cell">${i.expressId || '-'}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="deleteIssue(${i.id})" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
-                    </td>
-                </tr>`;
-            }).join('');
-        }
-
-        window.deleteIssue = (id) => {
-            if(confirm('Delete this issue permanently?')) {
-                const issues = DB.get('pt_issues').filter(i => i.id !== id);
-                DB.set('pt_issues', issues);
-                renderIssuesPage();
-                if (document.getElementById('page-viewer').classList.contains('active')) {
-                    renderViewerIssues();
-                }
-                showToast('Issue deleted successfully');
-            }
-        };
-
-        document.getElementById('issue-search').oninput = renderIssuesPage;
-        document.getElementById('issue-filter-global').onchange = renderIssuesPage;
-
-        // ==================== VIEWER PAGE ====================
-        function renderViewerIssues() {
-            const issues = DB.get('pt_issues');
-            const list = document.getElementById('viewer-issues-list');
-            if(issues.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-400 mt-10">No issues yet. Create one!</p>';
-                return;
-            }
-            list.innerHTML = issues.map(i => {
-                const statusClass = i.status === 'Open' ? 'status-open' : i.status === 'In Progress' ? 'status-progress' : 'status-closed';
-                const priorityIcon = i.priority === 'high' ? '🔴' : i.priority === 'medium' ? '🟠' : '🟢';
-                return `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm hover:shadow-md transition cursor-pointer" onclick="viewIssueDetail(${i.id})">
-                    <div class="flex justify-between mb-1">
-                        <span class="font-semibold text-gray-800">${priorityIcon} ${escapeHtml(i.title)}</span>
-                        <span class="text-xs px-2 py-0.5 rounded-full ${statusClass}">${i.status}</span>
-                    </div>
-                    <p class="text-gray-500 text-xs mb-2">${escapeHtml(i.description.substring(0, 80))}${i.description.length > 80 ? '...' : ''}</p>
-                    ${i.expressId ? `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-mono">Element: ${i.expressId}</span>` : ''}
-                </div>`;
-            }).join('');
-        }
-
-        window.viewIssueDetail = (id) => {
-            const issue = DB.get('pt_issues').find(i => i.id === id);
-            if (!issue) return;
-            alert(`Issue: ${issue.title}\nStatus: ${issue.status}\nPriority: ${issue.priority}\nDescription: ${issue.description}\nCreated: ${issue.date}`);
-        };
-
-        function initViewerPage() {
-            renderViewerIssues();
-            if (window._pendingIfcFile) {
-                if(window.loadIfcInViewer) window.loadIfcInViewer(window._pendingIfcFile);
-                window._pendingIfcFile = null;
-            }
-        }
-
-        // Viewer Form Controls
-        document.getElementById('toggle-viewer-form').onclick = () => {
-            document.getElementById('viewer-form').classList.toggle('hidden');
-        };
-        document.getElementById('cancel-v-issue').onclick = () => {
-            document.getElementById('viewer-form').classList.add('hidden');
-        };
-        
-        document.getElementById('save-v-issue').onclick = () => {
-            const title = document.getElementById('v-issue-title').value.trim();
-            if (!title) {
-                showToast('Please enter an issue title', 'error');
-                return;
-            }
-            const issues = DB.get('pt_issues');
-            const newIssue = {
-                id: Date.now(),
-                title: title,
-                description: document.getElementById('v-issue-desc').value.trim() || 'No description provided',
-                status: document.getElementById('v-issue-status').value,
-                priority: document.getElementById('v-issue-priority').value,
-                modelId: currentViewerModelId || 1,
-                expressId: selectedExpressId,
-                date: new Date().toISOString().split('T')[0],
-                createdBy: currentUser.email
-            };
-            issues.push(newIssue);
-            DB.set('pt_issues', issues);
-            
-            // Reset form
-            document.getElementById('v-issue-title').value = '';
-            document.getElementById('v-issue-desc').value = '';
-            document.getElementById('viewer-form').classList.add('hidden');
-            if(selectedExpressId) document.getElementById('close-popup').click();
-            
-            renderViewerIssues();
-            renderIssuesPage();
-            showToast('Issue created successfully!');
-        };
-
-        document.getElementById('create-issue-from-element').onclick = () => {
-            document.getElementById('viewer-form').classList.remove('hidden');
-            document.getElementById('v-issue-title').focus();
-        };
-
-        document.getElementById('close-popup').onclick = () => {
-            document.getElementById('element-popup').classList.add('hidden');
-            selectedExpressId = null;
-            document.getElementById('v-linked-info').classList.add('hidden');
-            if(window.clearIfcHighlight) window.clearIfcHighlight();
-        };
-
-        // Callback for 3D engine
-        window.onElementSelected = (id) => {
-            selectedExpressId = id;
-            document.getElementById('prop-id').textContent = id;
-            const types = ['IfcWall', 'IfcSlab', 'IfcDoor', 'IfcWindow', 'IfcBeam', 'IfcColumn', 'IfcRoof'];
-            document.getElementById('prop-type').textContent = types[id % types.length];
-            document.getElementById('prop-name').textContent = `Building_Element_${id}`;
-            const materials = ['Concrete C30/37', 'Steel S235', 'Timber GL24h', 'Masonry', 'Glass'];
-            document.getElementById('prop-mat').textContent = materials[id % materials.length];
-            document.getElementById('element-popup').classList.remove('hidden');
-            document.getElementById('v-linked-info').classList.remove('hidden');
-            document.getElementById('v-linked-id').textContent = id;
-        };
-
-        // ==================== SETTINGS ====================
-        function renderSettings() {
-            document.getElementById('set-name').value = currentUser.name;
-            document.getElementById('set-email').value = currentUser.email;
-        }
-        
-        document.getElementById('save-settings').onclick = () => {
-            const newName = document.getElementById('set-name').value.trim();
-            if (!newName) return;
-            let users = DB.get('pt_users');
-            const u = users.find(u => u.id === currentUser.id);
-            if(u) u.name = newName;
-            DB.set('pt_users', users);
-            currentUser.name = newName;
-            localStorage.setItem('pt_session', JSON.stringify(currentUser));
-            updateHeader();
-            showToast('Profile updated successfully!');
-        };
-        
-        document.getElementById('clear-data-btn').onclick = () => {
-            if(confirm('⚠️ WARNING: This will delete ALL users, models, and issues. This action cannot be undone. Are you sure?')) {
-                localStorage.clear();
-                showToast('All data cleared. Redirecting to login...');
-                setTimeout(() => logout(), 1500);
-            }
-        };
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // ==================== BOOTSTRAP ====================
-        initDB();
-        const session = localStorage.getItem('pt_session');
-        if (session) {
-            try {
-                currentUser = JSON.parse(session);
-                if (DB.get('pt_users').find(u => u.id === currentUser.id)) {
-                    document.getElementById('auth-screen').classList.add('hidden');
-                    document.getElementById('app-shell').classList.remove('hidden');
-                    updateHeader();
-                    location.hash = '#/dashboard';
-                } else { 
-                    localStorage.removeItem('pt_session'); 
-                }
-            } catch (e) { 
-                localStorage.removeItem('pt_session'); 
-            }
-        }
-    </script>
-
-    <!-- ==================== 3D VIEWER MODULE ==================== -->
-    <script type="module">
-        import * as THREE from 'https://unpkg.com/three@0.157.0/build/three.module.js';
-        import { OrbitControls } from 'https://unpkg.com/three@0.157.0/examples/jsm/controls/OrbitControls.js';
-        import { IFCLoader } from 'https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.129/dist/web-ifc-three.js';
-
-        const container = document.getElementById('viewer-container');
-        let scene, camera, renderer, controls;
-        let ifcLoader, currentModelID = 0;
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        let highlightedSubset = null;
-
-        function init() {
-            if (!container) return;
-            
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
-            scene.fog = new THREE.FogExp2(0x1a1a2e, 0.008);
-            
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.set(8, 6, 12);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            container.appendChild(renderer.domElement);
-
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.autoRotate = false;
-            controls.enableZoom = true;
-            controls.zoomSpeed = 1.2;
-            controls.panSpeed = 0.8;
-
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x404060);
-            scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-            directionalLight.position.set(5, 10, 7);
-            directionalLight.castShadow = true;
-            scene.add(directionalLight);
-            
-            const backLight = new THREE.PointLight(0x4466cc, 0.5);
-            backLight.position.set(-3, 2, -4);
-            scene.add(backLight);
-            
-            const fillLight = new THREE.PointLight(0xffaa66, 0.3);
-            fillLight.position.set(2, 3, 4);
-            scene.add(fillLight);
-
-            // Grid helper
-            const gridHelper = new THREE.GridHelper(20, 20, 0x88aaff, 0x335588);
-            gridHelper.position.y = -2;
-            scene.add(gridHelper);
-
-            // Initialize IFC Loader
-            ifcLoader = new IFCLoader();
-            ifcLoader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.52/');
-            
-            renderer.domElement.addEventListener('click', onClick);
-            
-            window.addEventListener('resize', onWindowResize);
-            
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
-            animate();
-            
-            // Add a demo building if no model loaded
-            addDemoBuilding();
-        }
-        
-        function onWindowResize() {
-            if (!container) return;
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        }
-        
-        function addDemoBuilding() {
-            // Create a simple demo building for visualization
-            const buildingGroup = new THREE.Group();
-            
-            // Main building block
-            const buildingMat = new THREE.MeshStandardMaterial({ color: 0x4a6fa5, roughness: 0.3, metalness: 0.1 });
-            const mainBlock = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), buildingMat);
-            mainBlock.position.y = 0;
-            mainBlock.castShadow = true;
-            mainBlock.receiveShadow = true;
-            buildingGroup.add(mainBlock);
-            
-            // Roof
-            const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 });
-            const roof = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 0.8, 4), roofMat);
-            roof.rotation.y = Math.PI / 4;
-            roof.position.y = 2.2;
-            roof.castShadow = true;
-            buildingGroup.add(roof);
-            
-            // Windows
-            const windowMat = new THREE.MeshStandardMaterial({ color: 0x87ceeb, emissive: 0x224466 });
-            const windowPositions = [[-2, 0.5, 3.01], [0, 0.5, 3.01], [2, 0.5, 3.01], [-2, 1.5, 3.01], [0, 1.5, 3.01], [2, 1.5, 3.01]];
-            windowPositions.forEach(pos => {
-                const windowGeo = new THREE.BoxGeometry(1.2, 1.2, 0.1);
-                const windowMesh = new THREE.Mesh(windowGeo, windowMat);
-                windowMesh.position.set(pos[0], pos[1], pos[2]);
-                windowMesh.castShadow = true;
-                buildingGroup.add(windowMesh);
-            });
-            
-            scene.add(buildingGroup);
-            
-            // Make it clickable
-            buildingGroup.userData = { name: 'Main Building', type: 'building', id: 999 };
-        }
-        
-        async function onClick(event) {
-            if (!ifcLoader || currentModelID === 0) {
-                // For demo building
-                const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(scene.children, true);
-                if (intersects.length > 0 && window.onElementSelected) {
-                    window.onElementSelected(Math.floor(Math.random() * 500) + 100);
-                }
-                return;
-            }
-            
-            const rect = renderer.domElement.getBoundingClientRect();
-            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            
-            const intersects = raycaster.intersectObjects(scene.children, true);
-            if (intersects.length > 0) {
-                const id = ifcLoader.ifcManager.getExpressId(intersects[0].object.geometry, intersects[0].faceIndex);
-                if (id) {
-                    // Remove previous highlight
-                    if (highlightedSubset) {
-                        ifcLoader.ifcManager.removeSubset(currentModelID, scene);
-                    }
-                    // Highlight selected
-                    highlightedSubset = ifcLoader.ifcManager.createSubset({
-                        modelID: currentModelID,
-                        ids: [id],
-                        scene: scene,
-                        removePrevious: true,
-                        material: new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.6, depthTest: false })
-                    });
-                    if (window.onElementSelected) window.onElementSelected(id);
-                }
-            }
-        }
-        
-        window.clearIfcHighlight = () => {
-            if (highlightedSubset && ifcLoader && currentModelID !== 0) {
-                try { 
-                    ifcLoader.ifcManager.removeSubset(currentModelID, scene);
-                    highlightedSubset = null;
-                } catch(e) {}
-            }
-        };
-        
-        window.loadIfcInViewer = async (file) => {
-            if (!ifcLoader) {
-                alert("IFC Loader not ready. Please refresh and try again.");
-                return;
-            }
-            const loader = document.getElementById('loader-overlay');
-            if (loader) loader.classList.remove('hidden');
-            
-            // Clear existing
-            if (currentModelID !== 0) {
-                try { 
-                    ifcLoader.ifcManager.removeModel(currentModelID);
-                } catch(e) {}
-                // Clear all meshes from scene
-                scene.children.forEach(child => {
-                    if (child.isMesh && child !== scene.children.find(c => c.isGridHelper)) {
-                        scene.remove(child);
-                    }
-                });
-                currentModelID = 0;
-            }
-            
-            const url = URL.createObjectURL(file);
-            try {
-                const model = await ifcLoader.load(url);
-                scene.add(model);
-                currentModelID = model.modelID;
-                
-                // Adjust camera to fit model
-                const box = new THREE.Box3().setFromObject(model);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3()).length();
-                controls.target.copy(center);
-                camera.position.set(center.x + size/1.5, center.y + size/2, center.z + size/1.5);
-                controls.update();
-                
-                if (loader) loader.classList.add('hidden');
-                URL.revokeObjectURL(url);
-                showToast('IFC model loaded successfully!');
-            } catch (err) {
-                console.error('Error loading IFC:', err);
-                if (loader) loader.classList.add('hidden');
-                alert('Error loading IFC file. Please ensure it\'s a valid IFC file.');
-            }
-        };
-        
-        function showToast(message) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-bounce';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-        
-        // Initialize when viewer container is visible
-        const observer = new MutationObserver(() => {
-            const viewerPage = document.getElementById('page-viewer');
-            if (viewerPage && viewerPage.classList.contains('active') && !window._viewerInitialized) {
-                init();
-                window._viewerInitialized = true;
-            }
-        });
-        observer.observe(document.getElementById('page-viewer'), { attributes: true, attributeFilter: ['class'] });
-        
-        // Also try to init immediately if viewer is already visible
-        if (document.getElementById('page-viewer') && document.getElementById('page-viewer').classList.contains('active')) {
-            init();
-            window._viewerInitialized = true;
-        }
-    </script>
+/* ═══════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════ */
+loadState();
+if(S.user) S.project = PROJECT;
+render();
+</script>
 </body>
 </html>
