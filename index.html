@@ -3,594 +3,774 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Property Management System - IFC Viewer & Issue Tracker</title>
+    <title>PropTrack - Complete Property Management MVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+        .page { display: none; }
+        .page.active { display: flex; }
+        #viewer-container canvas { width: 100% !important; height: 100% !important; display: block; }
+        .sidebar-link.active { background-color: rgba(255,255,255,0.1); border-right: 4px solid #818cf8; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .status-open { background-color: #fee2e2; color: #991b1b; }
+        .status-progress { background-color: #fef3c7; color: #92400e; }
+        .status-closed { background-color: #d1fae5; color: #065f46; }
+        .priority-high { border-left-color: #ef4444; }
+        .priority-medium { border-left-color: #f59e0b; }
+        .priority-low { border-left-color: #10b981; }
+        
+        /* Animation for modals */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: #0a0e27;
-            overflow: hidden;
-            color: #fff;
+        .modal-animation {
+            animation: fadeIn 0.2s ease-out;
         }
-
-        /* Auth Container */
-        .auth-container {
+        
+        /* Toast notification */
+        .toast {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
-        }
-
-        .auth-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 40px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .auth-card h2 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .auth-card h3 {
-            color: #333;
-            margin-bottom: 25px;
-            font-size: 20px;
-        }
-
-        .auth-card input {
-            width: 100%;
-            padding: 12px 15px;
-            margin-bottom: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-
-        .auth-card input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .auth-card button {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .auth-card button:hover {
-            transform: translateY(-2px);
-        }
-
-        .auth-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-        }
-
-        .auth-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .demo-credentials {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            font-size: 12px;
-            color: #666;
-        }
-
-        /* Main App Layout */
-        .app-container {
-            display: none;
-            width: 100vw;
-            height: 100vh;
-            flex-direction: column;
-        }
-
-        /* Navbar */
-        .navbar {
-            background: rgba(10, 14, 39, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 15px 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            z-index: 100;
-        }
-
-        .navbar h1 {
-            font-size: 20px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .logout-btn {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .logout-btn:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        /* Main Content */
-        .main-content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* Viewer Section */
-        .viewer-section {
-            flex: 1;
-            position: relative;
-            background: #1a1a2e;
-        }
-
-        #viewer-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-
-        .viewer-controls {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 10;
-            display: flex;
-            gap: 10px;
-        }
-
-        .control-btn {
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 10px 20px;
-            border-radius: 8px;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-
-        .control-btn:hover {
-            background: rgba(102,126,234,0.8);
-        }
-
-        .object-info {
-            position: absolute;
             bottom: 20px;
-            left: 20px;
             right: 20px;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-            font-size: 14px;
-            z-index: 10;
-            pointer-events: none;
-        }
-
-        /* Issues Panel */
-        .issues-panel {
-            width: 380px;
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border-left: 1px solid rgba(0,0,0,0.1);
-        }
-
-        .issues-header {
-            padding: 20px;
-            background: white;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .issues-header h2 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 20px;
-        }
-
-        .create-issue-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #1f2937;
             color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .create-issue-btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .filter-tabs {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 6px 12px;
-            background: #f0f0f0;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-        }
-
-        .filter-btn.active {
-            background: #667eea;
-            color: white;
-        }
-
-        .issues-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-        }
-
-        .issue-card {
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            cursor: pointer;
-            transition: all 0.3s;
-            border-left: 3px solid;
-        }
-
-        .issue-card:hover {
-            transform: translateX(-5px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .issue-title {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .issue-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            margin-top: 8px;
-        }
-
-        .status-badge {
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .status-open { background: #fee; color: #c00; }
-        .status-progress { background: #e3f2fd; color: #1976d2; }
-        .status-resolved { background: #e8f5e9; color: #388e3c; }
-
-        .priority-high { border-left-color: #f44336; }
-        .priority-medium { border-left-color: #ff9800; }
-        .priority-low { border-left-color: #4caf50; }
-
-        /* Modal */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            padding: 12px 20px;
+            border-radius: 8px;
             z-index: 1000;
+            animation: slideIn 0.3s ease-out;
         }
-
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-content h3 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .modal-content input,
-        .modal-content textarea,
-        .modal-content select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-family: inherit;
-        }
-
-        .modal-content textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .modal-buttons button {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .submit-btn {
-            background: #667eea;
-            color: white;
-        }
-
-        .cancel-btn {
-            background: #f0f0f0;
-            color: #666;
-        }
-
-        .issue-detail {
-            padding: 15px;
-        }
-
-        .issue-detail p {
-            margin: 10px 0;
-            color: #555;
-            line-height: 1.6;
-        }
-
-        .issue-image {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-
-        @media (max-width: 768px) {
-            .issues-panel {
-                width: 100%;
-                position: absolute;
-                right: -100%;
-                transition: right 0.3s;
-                height: 100%;
-                z-index: 200;
-            }
-            
-            .issues-panel.open {
-                right: 0;
-            }
-            
-            .viewer-controls {
-                top: auto;
-                bottom: 20px;
-                left: 20px;
-                right: auto;
-            }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
-<body>
-    <!-- Auth Container -->
-    <div id="authContainer" class="auth-container">
-        <div class="auth-card">
-            <h2>🏗️ Property Management System</h2>
-            <div id="authForms">
-                <h3>Login</h3>
-                <form id="loginForm">
-                    <input type="email" id="loginEmail" placeholder="Email" required>
-                    <input type="password" id="loginPassword" placeholder="Password" required>
-                    <button type="submit">Login</button>
-                </form>
-                <p class="auth-link">Don't have an account? <a href="#" onclick="showRegister()">Register</a></p>
-                <div class="demo-credentials">
-                    <strong>Demo Credentials:</strong><br>
-                    Email: admin@example.com<br>
-                    Password: password123
-                </div>
-            </div>
-        </div>
-    </div>
+<body class="bg-gray-100 h-screen overflow-hidden">
 
-    <!-- Main App -->
-    <div id="appContainer" class="app-container">
-        <nav class="navbar">
-            <h1>🏗️ Property Management System - IFC Viewer & Issue Tracker</h1>
-            <div class="user-info">
-                <span id="userName"></span>
-                <button class="logout-btn" onclick="logout()">Logout</button>
+    <!-- ==================== AUTH SCREEN ==================== -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-indigo-900">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 border border-gray-100">
+            <div class="text-center mb-8">
+                <div class="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center mx-auto mb-4 font-bold text-xl">P</div>
+                <h1 class="text-2xl font-bold text-gray-800">Welcome to PropTrack</h1>
+                <p class="text-sm text-gray-500 mt-1">Sign in to manage your properties</p>
             </div>
-        </nav>
-        <div class="main-content">
-            <div class="viewer-section">
-                <div id="viewer-container"></div>
-                <div class="viewer-controls">
-                    <button class="control-btn" onclick="toggleIssuesPanel()">📋 Issues</button>
-                    <button class="control-btn" onclick="uploadIFCFile()">📁 Upload IFC</button>
-                    <input type="file" id="ifcUpload" accept=".ifc" style="display:none" onchange="handleIFCUpload(this)">
-                </div>
-                <div id="objectInfo" class="object-info" style="display:none;"></div>
-            </div>
-            <div id="issuesPanel" class="issues-panel">
-                <div class="issues-header">
-                    <h2>Issue Tracker</h2>
-                    <button class="create-issue-btn" onclick="showCreateIssueModal()">+ Create New Issue</button>
-                    <div class="filter-tabs">
-                        <button class="filter-btn active" onclick="filterIssues('all')">All</button>
-                        <button class="filter-btn" onclick="filterIssues('open')">Open</button>
-                        <button class="filter-btn" onclick="filterIssues('in-progress')">In Progress</button>
-                        <button class="filter-btn" onclick="filterIssues('resolved')">Resolved</button>
+            <form id="auth-form" class="space-y-4">
+                <div id="register-fields" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input type="text" id="auth-name" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="John Doe">
                     </div>
                 </div>
-                <div id="issuesList" class="issues-list"></div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input type="email" id="auth-email" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="admin@test.com" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="auth-password" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••" required>
+                </div>
+                <div id="auth-error" class="text-red-500 text-sm hidden"></div>
+                <button type="submit" id="auth-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-md">Sign In</button>
+            </form>
+            <p class="mt-6 text-sm text-center text-gray-500">
+                <span id="auth-toggle-text">Don't have an account? </span> 
+                <span id="auth-toggle-btn" class="text-indigo-600 font-semibold cursor-pointer hover:underline">Register</span>
+            </p>
+            <div class="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 text-center">
+                <strong>Demo Credentials:</strong><br>
+                admin@test.com / password
             </div>
         </div>
     </div>
 
-    <!-- Modal -->
-    <div id="modal" class="modal" style="display:none;"></div>
+    <!-- ==================== MAIN APP SHELL ==================== -->
+    <div id="app-shell" class="hidden h-screen w-screen flex flex-col">
+        
+        <!-- Top Navbar -->
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-30 shadow-sm">
+            <div class="flex items-center gap-4">
+                <button id="mobile-menu-btn" class="lg:hidden text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="font-bold text-xl text-gray-800 flex items-center gap-2">
+                    <div class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-bold">P</div>
+                    PropTrack
+                </h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden sm:flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                    <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm" id="header-avatar">A</div>
+                    <span class="text-sm font-medium text-gray-700" id="header-username">Admin</span>
+                </div>
+                <button id="logout-btn" class="text-sm text-gray-500 hover:text-red-600 font-medium transition">Logout</button>
+            </div>
+        </header>
 
-    <!-- Three.js and Dependencies -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col transition-all duration-300 fixed lg:relative z-20 h-[calc(100%-4rem)] -translate-x-full lg:translate-x-0">
+                <nav class="flex-1 py-6">
+                    <a href="#/dashboard" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"></path></svg>
+                        Dashboard
+                    </a>
+                    <a href="#/models" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        Models
+                    </a>
+                    <a href="#/issues" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                        Issues
+                    </a>
+                    <a href="#/settings" class="sidebar-link flex items-center gap-3 px-6 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-slate-800 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Settings
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- Sidebar Overlay for Mobile -->
+            <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-10 lg:hidden" onclick="toggleSidebar()"></div>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 bg-gray-50 overflow-y-auto scrollbar-thin">
+                
+                <!-- PAGE: DASHBOARD -->
+                <div id="page-dashboard" class="page flex-col p-6 lg:p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Dashboard</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                            <p class="text-sm font-medium text-gray-500">Total Models</p>
+                            <p class="text-3xl font-bold text-gray-800 mt-2" id="stat-models">0</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                            <p class="text-sm font-medium text-gray-500">Open Issues</p>
+                            <p class="text-3xl font-bold text-red-600 mt-2" id="stat-open">0</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                            <p class="text-sm font-medium text-gray-500">Resolved Issues</p>
+                            <p class="text-3xl font-bold text-green-600 mt-2" id="stat-closed">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="font-bold text-gray-700 mb-4">Recent Activity</h3>
+                        <div id="recent-issues-list" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <!-- PAGE: MODELS -->
+                <div id="page-models" class="page flex-col p-6 lg:p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">IFC Models</h2>
+                        <label class="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Upload New Model
+                            <input type="file" id="global-ifc-upload" accept=".ifc" hidden>
+                        </label>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
+                        <p class="text-sm text-blue-800">📁 <strong>IFC Viewer Ready:</strong> Upload any IFC file to view in 3D. The viewer supports full navigation, element selection, and issue linking.</p>
+                    </div>
+                    <div id="models-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                </div>
+
+                <!-- PAGE: ISSUES -->
+                <div id="page-issues" class="page flex-col p-6 lg:p-8">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">All Issues</h2>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <input type="text" id="issue-search" placeholder="Search issues..." class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full sm:w-64 focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <select id="issue-filter-global" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="All">All Statuses</option>
+                                <option value="Open">Open</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+                                    <tr>
+                                        <th class="px-6 py-3">Title</th>
+                                        <th class="px-6 py-3 hidden md:table-cell">Model</th>
+                                        <th class="px-6 py-3">Status</th>
+                                        <th class="px-6 py-3 hidden sm:table-cell">Priority</th>
+                                        <th class="px-6 py-3 hidden sm:table-cell">Element ID</th>
+                                        <th class="px-6 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="issues-table-body" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                        <div id="issues-empty-state" class="hidden p-8 text-center text-gray-400">
+                            No issues match your search.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAGE: VIEWER (Split Screen) -->
+                <div id="page-viewer" class="page flex-row h-[calc(100vh-4rem)] !p-0 overflow-hidden">
+                    <div class="flex-1 relative bg-slate-900">
+                        <div id="viewer-container" class="w-full h-full"></div>
+                        <div id="element-popup" class="hidden absolute top-4 left-4 bg-black/80 text-white p-4 rounded-lg shadow-xl w-72 backdrop-blur-sm border border-white/10 z-10">
+                            <h3 class="font-bold text-md mb-2 text-indigo-300">Element Properties</h3>
+                            <div class="space-y-1 text-sm">
+                                <p><span class="text-gray-400">ExpressID:</span> <span id="prop-id" class="font-mono">-</span></p>
+                                <p><span class="text-gray-400">Type:</span> <span id="prop-type">-</span></p>
+                                <p><span class="text-gray-400">Name:</span> <span id="prop-name">-</span></p>
+                                <p><span class="text-gray-400">Material:</span> <span id="prop-mat">-</span></p>
+                            </div>
+                            <button id="create-issue-from-element" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded text-sm transition">Create Issue for Element</button>
+                            <button id="close-popup" class="mt-2 text-xs text-gray-400 hover:text-white transition w-full">Close</button>
+                        </div>
+                        <div id="loader-overlay" class="hidden absolute inset-0 bg-black/70 flex items-center justify-center z-20">
+                            <div class="text-white text-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                                <p class="font-semibold">Loading IFC Model...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Viewer Issue Panel -->
+                    <div class="w-full md:w-96 bg-white border-l border-gray-200 flex flex-col h-[40vh] md:h-full shrink-0">
+                        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                            <h3 class="font-bold text-gray-800">Model Issues</h3>
+                            <button id="toggle-viewer-form" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-medium">+ New</button>
+                        </div>
+                        <div id="viewer-form" class="hidden border-b p-4 bg-gray-50 space-y-2">
+                            <input type="text" id="v-issue-title" placeholder="Issue Title" class="w-full p-2 border rounded text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                            <textarea id="v-issue-desc" placeholder="Description..." rows="2" class="w-full p-2 border rounded text-sm outline-none resize-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                            <select id="v-issue-status" class="w-full p-2 border rounded text-sm bg-white outline-none">
+                                <option>Open</option>
+                                <option>In Progress</option>
+                                <option>Closed</option>
+                            </select>
+                            <select id="v-issue-priority" class="w-full p-2 border rounded text-sm bg-white outline-none">
+                                <option value="low">Low Priority</option>
+                                <option value="medium" selected>Medium Priority</option>
+                                <option value="high">High Priority</option>
+                            </select>
+                            <div id="v-linked-info" class="hidden text-xs text-indigo-600 bg-indigo-50 p-2 rounded">Linked to Element: <strong id="v-linked-id">0</strong></div>
+                            <div class="flex gap-2">
+                                <button id="save-v-issue" class="flex-1 bg-indigo-600 text-white py-1.5 rounded text-sm">Save Issue</button>
+                                <button id="cancel-v-issue" class="px-4 bg-gray-200 text-gray-700 py-1.5 rounded text-sm">Cancel</button>
+                            </div>
+                        </div>
+                        <div id="viewer-issues-list" class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin bg-gray-50"></div>
+                    </div>
+                </div>
+
+                <!-- PAGE: SETTINGS -->
+                <div id="page-settings" class="page flex-col p-6 lg:p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Settings</h2>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
+                        <h3 class="font-semibold text-gray-700 mb-4 border-b pb-2">Profile Information</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" id="set-name" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="set-email" class="w-full p-2 border border-gray-300 rounded-lg outline-none bg-gray-50" disabled>
+                            </div>
+                            <button id="save-settings" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition">Save Changes</button>
+                        </div>
+                        <div class="mt-8 border-t pt-4">
+                            <h3 class="font-semibold text-red-600 mb-2">Data Management</h3>
+                            <button id="clear-data-btn" class="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm hover:bg-red-100 transition">Reset All Data & Logout</button>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // ==================== DATA MANAGEMENT ====================
+        let currentUser = null;
+        let selectedExpressId = null;
+        let currentViewerModelId = null;
+
+        // Initialize database with dummy data
+        const initDB = () => {
+            if (!localStorage.getItem('pt_initialized')) {
+                // Users
+                localStorage.setItem('pt_users', JSON.stringify([
+                    { id: 1, name: 'Admin User', email: 'admin@test.com', password: 'password' },
+                    { id: 2, name: 'Sarah Johnson', email: 'sarah@test.com', password: 'password' },
+                    { id: 3, name: 'Mike Chen', email: 'mike@test.com', password: 'password' }
+                ]));
+                
+                // Models
+                localStorage.setItem('pt_models', JSON.stringify([
+                    { id: 1, name: 'Main_Office_Building.ifc', date: '2024-01-15', size: '24.5 MB', description: '5-story office building with basement' },
+                    { id: 2, name: 'Residential_Complex.ifc', date: '2024-01-20', size: '45.2 MB', description: 'Mixed-use residential development' },
+                    { id: 3, name: 'Warehouse_Facility.ifc', date: '2024-01-25', size: '12.1 MB', description: 'Industrial warehouse with loading docks' },
+                    { id: 4, name: 'Hospital_Wing.ifc', date: '2024-02-01', size: '67.8 MB', description: 'Medical facility extension' }
+                ]));
+                
+                // Issues with dummy data
+                localStorage.setItem('pt_issues', JSON.stringify([
+                    { id: 101, title: 'Crack in Foundation Slab', description: 'Structural crack observed near grid A-2. Needs immediate inspection.', status: 'Open', priority: 'high', modelId: 1, expressId: 142, date: '2024-01-16', createdBy: 'admin@test.com' },
+                    { id: 102, title: 'Missing Window Frame', description: 'Window W-04 missing from 2nd floor east wall plan.', status: 'In Progress', priority: 'medium', modelId: 1, expressId: 205, date: '2024-01-18', createdBy: 'sarah@test.com' },
+                    { id: 103, title: 'Incorrect Door Swing', description: 'Main entrance door swings inward instead of outward, violating code.', status: 'Open', priority: 'high', modelId: 2, expressId: 312, date: '2024-01-22', createdBy: 'admin@test.com' },
+                    { id: 104, title: 'Clashing HVAC Duct', description: 'HVAC duct route clashes with structural beam at coordinates (12.5, 8.3, 4.2).', status: 'Closed', priority: 'high', modelId: 2, expressId: null, date: '2024-01-23', createdBy: 'mike@test.com' },
+                    { id: 105, title: 'Wrong Wall Material', description: 'Firewall specified as drywall, should be concrete per specifications.', status: 'Open', priority: 'medium', modelId: 3, expressId: 88, date: '2024-01-26', createdBy: 'sarah@test.com' },
+                    { id: 106, title: 'Electrical Outlet Placement', description: 'Outlets missing from conference room north wall.', status: 'In Progress', priority: 'low', modelId: 1, expressId: 423, date: '2024-01-28', createdBy: 'admin@test.com' },
+                    { id: 107, title: 'Plumbing Pipe Interference', description: 'Water pipe conflicts with structural column.', status: 'Open', priority: 'high', modelId: 4, expressId: 567, date: '2024-02-02', createdBy: 'mike@test.com' }
+                ]));
+                
+                localStorage.setItem('pt_initialized', 'true');
+            }
+        };
+
+        const DB = {
+            get: (key) => { 
+                try { 
+                    const data = localStorage.getItem(key);
+                    return data ? JSON.parse(data) : [];
+                } catch(e) { 
+                    return []; 
+                }
+            },
+            set: (key, val) => localStorage.setItem(key, JSON.stringify(val))
+        };
+
+        // Helper functions
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'error' ? 'bg-red-600' : 'bg-green-600'}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ==================== AUTHENTICATION ====================
+        let isLoginMode = true;
+        
+        document.getElementById('auth-toggle-btn').onclick = () => {
+            isLoginMode = !isLoginMode;
+            document.getElementById('register-fields').classList.toggle('hidden', isLoginMode);
+            document.getElementById('auth-btn').textContent = isLoginMode ? 'Sign In' : 'Create Account';
+            document.getElementById('auth-toggle-text').textContent = isLoginMode ? "Don't have an account? " : "Already have an account? ";
+            document.getElementById('auth-toggle-btn').textContent = isLoginMode ? 'Register' : 'Sign In';
+            document.getElementById('auth-error').classList.add('hidden');
+        };
+
+        document.getElementById('auth-form').onsubmit = (e) => {
+            e.preventDefault();
+            const errEl = document.getElementById('auth-error');
+            errEl.classList.add('hidden');
+            const email = document.getElementById('auth-email').value.trim();
+            const pw = document.getElementById('auth-password').value;
+            
+            let users = DB.get('pt_users');
+            if (isLoginMode) {
+                const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pw);
+                if (user) { 
+                    login(user); 
+                } else { 
+                    errEl.textContent = 'Invalid email or password. Try admin@test.com / password';
+                    errEl.classList.remove('hidden'); 
+                }
+            } else {
+                if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+                    errEl.textContent = 'Email already in use.';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                const newUser = { id: Date.now(), name: document.getElementById('auth-name').value || 'User', email, password: pw };
+                users.push(newUser);
+                DB.set('pt_users', users);
+                login(newUser);
+            }
+        };
+
+        function login(user) {
+            currentUser = user;
+            localStorage.setItem('pt_session', JSON.stringify(user));
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-shell').classList.remove('hidden');
+            updateHeader();
+            location.hash = '#/dashboard';
+        }
+
+        function logout() {
+            localStorage.removeItem('pt_session');
+            currentUser = null;
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('app-shell').classList.add('hidden');
+            location.hash = '';
+        }
+
+        document.getElementById('logout-btn').onclick = logout;
+        
+        function updateHeader() {
+            document.getElementById('header-username').textContent = currentUser.name;
+            document.getElementById('header-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+        }
+
+        // ==================== MOBILE SIDEBAR ====================
+        window.toggleSidebar = () => {
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebar-overlay');
+            sb.classList.toggle('-translate-x-full');
+            ov.classList.toggle('hidden');
+        };
+        document.getElementById('mobile-menu-btn').onclick = toggleSidebar;
+
+        // ==================== ROUTER ====================
+        function handleRoute() {
+            if (!currentUser) return;
+            const hash = location.hash || '#/dashboard';
+            
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebar-overlay').classList.add('hidden');
+
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+
+            const pageId = hash.replace('#/', '').split('-')[0];
+            const pageEl = document.getElementById(`page-${pageId}`);
+            
+            if (pageEl) {
+                pageEl.classList.add('active');
+                const link = document.querySelector(`a[href="#/${pageId}"]`);
+                if(link) link.classList.add('active');
+            } else {
+                document.getElementById('page-dashboard').classList.add('active');
+                document.querySelector('a[href="#/dashboard"]').classList.add('active');
+            }
+
+            // Page specific initialization
+            if (hash.startsWith('#/dashboard')) renderDashboard();
+            if (hash.startsWith('#/models')) renderModels();
+            if (hash.startsWith('#/issues')) renderIssuesPage();
+            if (hash.startsWith('#/viewer')) initViewerPage();
+            if (hash.startsWith('#/settings')) renderSettings();
+        }
+        
+        window.addEventListener('hashchange', handleRoute);
+
+        // ==================== DASHBOARD ====================
+        function renderDashboard() {
+            const issues = DB.get('pt_issues');
+            const models = DB.get('pt_models');
+            document.getElementById('stat-models').textContent = models.length;
+            document.getElementById('stat-open').textContent = issues.filter(i => i.status === 'Open').length;
+            document.getElementById('stat-closed').textContent = issues.filter(i => i.status === 'Closed').length;
+
+            const recent = document.getElementById('recent-issues-list');
+            if (issues.length === 0) { 
+                recent.innerHTML = '<p class="text-gray-400 text-sm">No issues yet. Create one from the Issues page!</p>'; 
+                return;
+            }
+            
+            recent.innerHTML = issues.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5).map(issue => {
+                const modelName = models.find(m => m.id === issue.modelId)?.name || 'Unknown Model';
+                const statusClass = issue.status === 'Open' ? 'status-open' : issue.status === 'In Progress' ? 'status-progress' : 'status-closed';
+                return `<div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition cursor-pointer" onclick="location.hash='#/issues'">
+                    <div>
+                        <p class="font-medium text-gray-800 text-sm">${escapeHtml(issue.title)}</p>
+                        <p class="text-xs text-gray-500">${modelName} ${issue.expressId ? `• Element: ${issue.expressId}` : ''}</p>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium ${statusClass}">${issue.status}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // ==================== MODELS ====================
+        function renderModels() {
+            const models = DB.get('pt_models');
+            const grid = document.getElementById('models-grid');
+            grid.innerHTML = models.map(m => `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between hover:shadow-md transition">
+                    <div>
+                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"></path></svg>
+                        </div>
+                        <h3 class="font-bold text-gray-800 mb-1 truncate">${m.name}</h3>
+                        <p class="text-xs text-gray-500">Uploaded: ${m.date} • ${m.size}</p>
+                        <p class="text-xs text-gray-400 mt-2">${m.description || 'Building Information Model'}</p>
+                    </div>
+                    <button onclick="openModelInViewer(${m.id})" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg text-sm transition">
+                        Open in 3D Viewer
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        window.openModelInViewer = (modelId) => {
+            currentViewerModelId = modelId;
+            location.hash = '#/viewer';
+        };
+
+        // Global IFC upload
+        document.getElementById('global-ifc-upload').onchange = (e) => {
+            if (e.target.files.length > 0) {
+                window._pendingIfcFile = e.target.files[0];
+                location.hash = '#/viewer';
+            }
+        };
+
+        // ==================== ISSUES PAGE ====================
+        function renderIssuesPage() {
+            const issues = DB.get('pt_issues');
+            const models = DB.get('pt_models');
+            const search = document.getElementById('issue-search').value.toLowerCase();
+            const filter = document.getElementById('issue-filter-global').value;
+
+            let filtered = issues;
+            if (filter !== 'All') filtered = filtered.filter(i => i.status === filter);
+            if (search) filtered = filtered.filter(i => i.title.toLowerCase().includes(search) || i.description.toLowerCase().includes(search));
+
+            const tbody = document.getElementById('issues-table-body');
+            const emptyState = document.getElementById('issues-empty-state');
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            tbody.innerHTML = filtered.map(i => {
+                const mName = models.find(m => m.id === i.modelId)?.name || 'Unknown';
+                const statusClass = i.status === 'Open' ? 'status-open' : i.status === 'In Progress' ? 'status-progress' : 'status-closed';
+                const priorityClass = i.priority === 'high' ? 'text-red-600' : i.priority === 'medium' ? 'text-orange-600' : 'text-green-600';
+                return `<tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 font-medium text-gray-800">${escapeHtml(i.title)}</td>
+                    <td class="px-6 py-4 text-gray-500 hidden md:table-cell">${escapeHtml(mName)}</td>
+                    <td class="px-6 py-4"><span class="text-xs px-2 py-0.5 rounded-full font-medium ${statusClass}">${i.status}</span></td>
+                    <td class="px-6 py-4 hidden sm:table-cell"><span class="text-xs font-medium ${priorityClass}">${i.priority || 'medium'}</span></td>
+                    <td class="px-6 py-4 text-gray-500 font-mono text-xs hidden sm:table-cell">${i.expressId || '-'}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="deleteIssue(${i.id})" class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        window.deleteIssue = (id) => {
+            if(confirm('Delete this issue permanently?')) {
+                const issues = DB.get('pt_issues').filter(i => i.id !== id);
+                DB.set('pt_issues', issues);
+                renderIssuesPage();
+                if (document.getElementById('page-viewer').classList.contains('active')) {
+                    renderViewerIssues();
+                }
+                showToast('Issue deleted successfully');
+            }
+        };
+
+        document.getElementById('issue-search').oninput = renderIssuesPage;
+        document.getElementById('issue-filter-global').onchange = renderIssuesPage;
+
+        // ==================== VIEWER PAGE ====================
+        function renderViewerIssues() {
+            const issues = DB.get('pt_issues');
+            const list = document.getElementById('viewer-issues-list');
+            if(issues.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-400 mt-10">No issues yet. Create one!</p>';
+                return;
+            }
+            list.innerHTML = issues.map(i => {
+                const statusClass = i.status === 'Open' ? 'status-open' : i.status === 'In Progress' ? 'status-progress' : 'status-closed';
+                const priorityIcon = i.priority === 'high' ? '🔴' : i.priority === 'medium' ? '🟠' : '🟢';
+                return `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm hover:shadow-md transition cursor-pointer" onclick="viewIssueDetail(${i.id})">
+                    <div class="flex justify-between mb-1">
+                        <span class="font-semibold text-gray-800">${priorityIcon} ${escapeHtml(i.title)}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${statusClass}">${i.status}</span>
+                    </div>
+                    <p class="text-gray-500 text-xs mb-2">${escapeHtml(i.description.substring(0, 80))}${i.description.length > 80 ? '...' : ''}</p>
+                    ${i.expressId ? `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-mono">Element: ${i.expressId}</span>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        window.viewIssueDetail = (id) => {
+            const issue = DB.get('pt_issues').find(i => i.id === id);
+            if (!issue) return;
+            alert(`Issue: ${issue.title}\nStatus: ${issue.status}\nPriority: ${issue.priority}\nDescription: ${issue.description}\nCreated: ${issue.date}`);
+        };
+
+        function initViewerPage() {
+            renderViewerIssues();
+            if (window._pendingIfcFile) {
+                if(window.loadIfcInViewer) window.loadIfcInViewer(window._pendingIfcFile);
+                window._pendingIfcFile = null;
+            }
+        }
+
+        // Viewer Form Controls
+        document.getElementById('toggle-viewer-form').onclick = () => {
+            document.getElementById('viewer-form').classList.toggle('hidden');
+        };
+        document.getElementById('cancel-v-issue').onclick = () => {
+            document.getElementById('viewer-form').classList.add('hidden');
+        };
+        
+        document.getElementById('save-v-issue').onclick = () => {
+            const title = document.getElementById('v-issue-title').value.trim();
+            if (!title) {
+                showToast('Please enter an issue title', 'error');
+                return;
+            }
+            const issues = DB.get('pt_issues');
+            const newIssue = {
+                id: Date.now(),
+                title: title,
+                description: document.getElementById('v-issue-desc').value.trim() || 'No description provided',
+                status: document.getElementById('v-issue-status').value,
+                priority: document.getElementById('v-issue-priority').value,
+                modelId: currentViewerModelId || 1,
+                expressId: selectedExpressId,
+                date: new Date().toISOString().split('T')[0],
+                createdBy: currentUser.email
+            };
+            issues.push(newIssue);
+            DB.set('pt_issues', issues);
+            
+            // Reset form
+            document.getElementById('v-issue-title').value = '';
+            document.getElementById('v-issue-desc').value = '';
+            document.getElementById('viewer-form').classList.add('hidden');
+            if(selectedExpressId) document.getElementById('close-popup').click();
+            
+            renderViewerIssues();
+            renderIssuesPage();
+            showToast('Issue created successfully!');
+        };
+
+        document.getElementById('create-issue-from-element').onclick = () => {
+            document.getElementById('viewer-form').classList.remove('hidden');
+            document.getElementById('v-issue-title').focus();
+        };
+
+        document.getElementById('close-popup').onclick = () => {
+            document.getElementById('element-popup').classList.add('hidden');
+            selectedExpressId = null;
+            document.getElementById('v-linked-info').classList.add('hidden');
+            if(window.clearIfcHighlight) window.clearIfcHighlight();
+        };
+
+        // Callback for 3D engine
+        window.onElementSelected = (id) => {
+            selectedExpressId = id;
+            document.getElementById('prop-id').textContent = id;
+            const types = ['IfcWall', 'IfcSlab', 'IfcDoor', 'IfcWindow', 'IfcBeam', 'IfcColumn', 'IfcRoof'];
+            document.getElementById('prop-type').textContent = types[id % types.length];
+            document.getElementById('prop-name').textContent = `Building_Element_${id}`;
+            const materials = ['Concrete C30/37', 'Steel S235', 'Timber GL24h', 'Masonry', 'Glass'];
+            document.getElementById('prop-mat').textContent = materials[id % materials.length];
+            document.getElementById('element-popup').classList.remove('hidden');
+            document.getElementById('v-linked-info').classList.remove('hidden');
+            document.getElementById('v-linked-id').textContent = id;
+        };
+
+        // ==================== SETTINGS ====================
+        function renderSettings() {
+            document.getElementById('set-name').value = currentUser.name;
+            document.getElementById('set-email').value = currentUser.email;
+        }
+        
+        document.getElementById('save-settings').onclick = () => {
+            const newName = document.getElementById('set-name').value.trim();
+            if (!newName) return;
+            let users = DB.get('pt_users');
+            const u = users.find(u => u.id === currentUser.id);
+            if(u) u.name = newName;
+            DB.set('pt_users', users);
+            currentUser.name = newName;
+            localStorage.setItem('pt_session', JSON.stringify(currentUser));
+            updateHeader();
+            showToast('Profile updated successfully!');
+        };
+        
+        document.getElementById('clear-data-btn').onclick = () => {
+            if(confirm('⚠️ WARNING: This will delete ALL users, models, and issues. This action cannot be undone. Are you sure?')) {
+                localStorage.clear();
+                showToast('All data cleared. Redirecting to login...');
+                setTimeout(() => logout(), 1500);
+            }
+        };
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== BOOTSTRAP ====================
+        initDB();
+        const session = localStorage.getItem('pt_session');
+        if (session) {
+            try {
+                currentUser = JSON.parse(session);
+                if (DB.get('pt_users').find(u => u.id === currentUser.id)) {
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('app-shell').classList.remove('hidden');
+                    updateHeader();
+                    location.hash = '#/dashboard';
+                } else { 
+                    localStorage.removeItem('pt_session'); 
+                }
+            } catch (e) { 
+                localStorage.removeItem('pt_session'); 
             }
         }
     </script>
 
+    <!-- ==================== 3D VIEWER MODULE ==================== -->
     <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import * as THREE from 'https://unpkg.com/three@0.157.0/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.157.0/examples/jsm/controls/OrbitControls.js';
+        import { IFCLoader } from 'https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.129/dist/web-ifc-three.js';
 
-        // Global variables
-        window.scene = null;
-        window.camera = null;
-        window.renderer = null;
-        window.labelRenderer = null;
-        window.controls = null;
-        window.currentUser = null;
-        window.issues = [];
-        window.currentFilter = 'all';
-        window.selectedObject = null;
-        window.clickableObjects = [];
-        window.currentModel = null;
+        const container = document.getElementById('viewer-container');
+        let scene, camera, renderer, controls;
+        let ifcLoader, currentModelID = 0;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let highlightedSubset = null;
 
-        // Initialize 3D scene
-        function init3DScene() {
-            const container = document.getElementById('viewer-container');
+        function init() {
+            if (!container) return;
             
-            // Scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0e27);
-            scene.fog = new THREE.FogExp2(0x0a0e27, 0.008);
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.FogExp2(0x1a1a2e, 0.008);
             
-            // Camera
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.set(8, 6, 12);
-            camera.lookAt(0, 0, 0);
             
-            // Renderers
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.shadowMap.enabled = true;
             renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
-            
-            labelRenderer = new CSS2DRenderer();
-            labelRenderer.setSize(container.clientWidth, container.clientHeight);
-            labelRenderer.domElement.style.position = 'absolute';
-            labelRenderer.domElement.style.top = '0px';
-            labelRenderer.domElement.style.left = '0px';
-            labelRenderer.domElement.style.pointerEvents = 'none';
-            container.appendChild(labelRenderer.domElement);
-            
-            // Controls
+
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.autoRotate = false;
             controls.enableZoom = true;
-            controls.enablePan = true;
             controls.zoomSpeed = 1.2;
             controls.panSpeed = 0.8;
-            controls.rotateSpeed = 1.0;
-            
-            // Lights
+
+            // Lighting
             const ambientLight = new THREE.AmbientLight(0x404060);
             scene.add(ambientLight);
             
             const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
             directionalLight.position.set(5, 10, 7);
             directionalLight.castShadow = true;
-            directionalLight.receiveShadow = true;
             scene.add(directionalLight);
             
             const backLight = new THREE.PointLight(0x4466cc, 0.5);
@@ -600,463 +780,193 @@
             const fillLight = new THREE.PointLight(0xffaa66, 0.3);
             fillLight.position.set(2, 3, 4);
             scene.add(fillLight);
-            
+
             // Grid helper
             const gridHelper = new THREE.GridHelper(20, 20, 0x88aaff, 0x335588);
-            gridHelper.position.y = -1.5;
+            gridHelper.position.y = -2;
             scene.add(gridHelper);
+
+            // Initialize IFC Loader
+            ifcLoader = new IFCLoader();
+            ifcLoader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.52/');
             
-            // Create demo building model
-            createDemoBuilding();
+            renderer.domElement.addEventListener('click', onClick);
             
-            // Animation loop
+            window.addEventListener('resize', onWindowResize);
+            
             function animate() {
                 requestAnimationFrame(animate);
                 controls.update();
                 renderer.render(scene, camera);
-                labelRenderer.render(scene, camera);
             }
             animate();
             
-            // Handle resize
-            window.addEventListener('resize', onWindowResize, false);
-            function onWindowResize() {
-                const width = container.clientWidth;
-                const height = container.clientHeight;
-                camera.aspect = width / height;
-                camera.updateProjectionMatrix();
-                renderer.setSize(width, height);
-                labelRenderer.setSize(width, height);
-            }
+            // Add a demo building if no model loaded
+            addDemoBuilding();
+        }
+        
+        function onWindowResize() {
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        function addDemoBuilding() {
+            // Create a simple demo building for visualization
+            const buildingGroup = new THREE.Group();
             
-            // Raycaster for object selection
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
+            // Main building block
+            const buildingMat = new THREE.MeshStandardMaterial({ color: 0x4a6fa5, roughness: 0.3, metalness: 0.1 });
+            const mainBlock = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), buildingMat);
+            mainBlock.position.y = 0;
+            mainBlock.castShadow = true;
+            mainBlock.receiveShadow = true;
+            buildingGroup.add(mainBlock);
             
-            renderer.domElement.addEventListener('click', (event) => {
+            // Roof
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 });
+            const roof = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 0.8, 4), roofMat);
+            roof.rotation.y = Math.PI / 4;
+            roof.position.y = 2.2;
+            roof.castShadow = true;
+            buildingGroup.add(roof);
+            
+            // Windows
+            const windowMat = new THREE.MeshStandardMaterial({ color: 0x87ceeb, emissive: 0x224466 });
+            const windowPositions = [[-2, 0.5, 3.01], [0, 0.5, 3.01], [2, 0.5, 3.01], [-2, 1.5, 3.01], [0, 1.5, 3.01], [2, 1.5, 3.01]];
+            windowPositions.forEach(pos => {
+                const windowGeo = new THREE.BoxGeometry(1.2, 1.2, 0.1);
+                const windowMesh = new THREE.Mesh(windowGeo, windowMat);
+                windowMesh.position.set(pos[0], pos[1], pos[2]);
+                windowMesh.castShadow = true;
+                buildingGroup.add(windowMesh);
+            });
+            
+            scene.add(buildingGroup);
+            
+            // Make it clickable
+            buildingGroup.userData = { name: 'Main Building', type: 'building', id: 999 };
+        }
+        
+        async function onClick(event) {
+            if (!ifcLoader || currentModelID === 0) {
+                // For demo building
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-                
                 raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(clickableObjects);
-                
-                if (intersects.length > 0) {
-                    const clicked = intersects[0].object;
-                    selectObject(clicked);
+                const intersects = raycaster.intersectObjects(scene.children, true);
+                if (intersects.length > 0 && window.onElementSelected) {
+                    window.onElementSelected(Math.floor(Math.random() * 500) + 100);
                 }
-            });
-        }
-        
-        // Create demo building with rooms
-        function createDemoBuilding() {
-            clickableObjects = [];
-            
-            // Floor
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x3a3a5a, roughness: 0.7, metalness: 0.1 });
-            const floor = new THREE.Mesh(new THREE.BoxGeometry(12, 0.2, 10), floorMat);
-            floor.position.set(0, -1.4, 0);
-            floor.receiveShadow = true;
-            scene.add(floor);
-            
-            // Create rooms
-            const rooms = [
-                { name: "Main Lobby", pos: [-3, -0.5, -2], size: [2.5, 2, 2.5], color: 0x5a6a8a, id: "room_1" },
-                { name: "Conference Room", pos: [2, -0.5, -2], size: [2.5, 2, 2.5], color: 0x6a7a9a, id: "room_2" },
-                { name: "Office A", pos: [-3, -0.5, 1.5], size: [2.5, 2, 2], color: 0x7a8aaa, id: "room_3" },
-                { name: "Office B", pos: [2, -0.5, 1.5], size: [2.5, 2, 2], color: 0x8a9aba, id: "room_4" },
-                { name: "Storage", pos: [-0.5, -0.5, 2.8], size: [2, 2, 1.5], color: 0x5a6a7a, id: "room_5" },
-                { name: "Meeting Room", pos: [-0.5, 1.2, -1.5], size: [3, 1.5, 3], color: 0x9aaaca, id: "room_6" }
-            ];
-            
-            rooms.forEach(room => {
-                const geometry = new THREE.BoxGeometry(room.size[0], room.size[1], room.size[2]);
-                const material = new THREE.MeshStandardMaterial({ color: room.color, transparent: true, opacity: 0.7 });
-                const cube = new THREE.Mesh(geometry, material);
-                cube.position.set(room.pos[0], room.pos[1], room.pos[2]);
-                cube.castShadow = true;
-                cube.receiveShadow = false;
-                cube.userData = { name: room.name, id: room.id, type: 'room', description: `${room.name} - Main floor area` };
-                scene.add(cube);
-                clickableObjects.push(cube);
-                
-                // Add label
-                const div = document.createElement('div');
-                div.textContent = room.name;
-                div.style.color = '#fff';
-                div.style.fontSize = '14px';
-                div.style.fontWeight = 'bold';
-                div.style.textShadow = '1px 1px 0 #000';
-                div.style.background = 'rgba(0,0,0,0.6)';
-                div.style.padding = '4px 8px';
-                div.style.borderRadius = '4px';
-                div.style.borderLeft = `3px solid #667eea`;
-                const label = new CSS2DObject(div);
-                label.position.set(room.pos[0], room.pos[1] + 1, room.pos[2]);
-                scene.add(label);
-            });
-            
-            // Add some decorative elements
-            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x8a7a6a, metalness: 0.3 });
-            const pillarPositions = [[-4, -0.5, -3], [4, -0.5, -3], [-4, -0.5, 3], [4, -0.5, 3]];
-            pillarPositions.forEach(pos => {
-                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2.5, 8), pillarMat);
-                pillar.position.set(pos[0], pos[1] + 0.8, pos[2]);
-                pillar.castShadow = true;
-                scene.add(pillar);
-            });
-            
-            // Add ceiling lights
-            const lightMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0x442200 });
-            const lightPositions = [[-2, 1.2, -1], [2, 1.2, -1], [-2, 1.2, 1], [2, 1.2, 1], [0, 1.2, 0]];
-            lightPositions.forEach(pos => {
-                const lightSphere = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), lightMat);
-                lightSphere.position.set(pos[0], pos[1], pos[2]);
-                scene.add(lightSphere);
-            });
-        }
-        
-        // Select object in 3D view
-        window.selectObject = function(object) {
-            // Reset previous selection
-            if (window.selectedObject) {
-                window.selectedObject.material.emissiveIntensity = 0;
-            }
-            
-            window.selectedObject = object;
-            object.material.emissiveIntensity = 0.3;
-            object.material.emissive = new THREE.Color(0x667eea);
-            
-            // Show object info
-            const infoDiv = document.getElementById('objectInfo');
-            infoDiv.style.display = 'block';
-            infoDiv.innerHTML = `
-                <strong>📍 Selected: ${object.userData.name}</strong><br>
-                Type: ${object.userData.type || 'Building Element'}<br>
-                ID: ${object.userData.id || 'N/A'}<br>
-                ${object.userData.description ? `Description: ${object.userData.description}` : ''}
-            `;
-            
-            setTimeout(() => {
-                infoDiv.style.opacity = '1';
-            }, 10);
-        };
-        
-        // Upload IFC file
-        window.uploadIFCFile = function() {
-            document.getElementById('ifcUpload').click();
-        };
-        
-        window.handleIFCUpload = async function(input) {
-            const file = input.files[0];
-            if (!file) return;
-            
-            // For demo, just show a message since we can't parse IFC in browser easily
-            alert(`IFC file "${file.name}" received!\n\nNote: Full IFC parsing requires web-ifc library. For demo purposes, we're using the 3D building model. The file would be uploaded to the server in production.`);
-            
-            // In a real implementation, you would:
-            // 1. Upload to backend
-            // 2. Parse with web-ifc
-            // 3. Load into Three.js scene
-        };
-        
-        // Issue Management
-        function loadIssues() {
-            const saved = localStorage.getItem('property_issues');
-            if (saved) {
-                window.issues = JSON.parse(saved);
-            } else {
-                // Create sample issues
-                window.issues = [
-                    {
-                        id: '1',
-                        title: 'Water leak in Conference Room',
-                        description: 'Significant water leakage from ceiling in conference room. Need immediate plumbing inspection.',
-                        status: 'open',
-                        priority: 'high',
-                        location: 'Conference Room',
-                        createdAt: new Date(Date.now() - 86400000).toISOString(),
-                        createdBy: 'admin@example.com',
-                        images: []
-                    },
-                    {
-                        id: '2',
-                        title: 'Flickering lights in Main Lobby',
-                        description: 'Several light fixtures flickering intermittently. Electrical issue suspected.',
-                        status: 'in-progress',
-                        priority: 'medium',
-                        location: 'Main Lobby',
-                        createdAt: new Date(Date.now() - 172800000).toISOString(),
-                        createdBy: 'admin@example.com',
-                        images: []
-                    },
-                    {
-                        id: '3',
-                        title: 'HVAC making unusual noise',
-                        description: 'Loud grinding noise from HVAC unit. Needs maintenance check.',
-                        status: 'open',
-                        priority: 'high',
-                        location: 'Meeting Room',
-                        createdAt: new Date(Date.now() - 259200000).toISOString(),
-                        createdBy: 'user@example.com',
-                        images: []
-                    },
-                    {
-                        id: '4',
-                        title: 'Door handle broken',
-                        description: 'Main entrance door handle is loose and difficult to operate.',
-                        status: 'resolved',
-                        priority: 'low',
-                        location: 'Main Lobby',
-                        createdAt: new Date(Date.now() - 345600000).toISOString(),
-                        createdBy: 'admin@example.com',
-                        images: []
-                    }
-                ];
-                saveIssues();
-            }
-            renderIssues();
-        }
-        
-        function saveIssues() {
-            localStorage.setItem('property_issues', JSON.stringify(window.issues));
-        }
-        
-        window.filterIssues = function(status) {
-            window.currentFilter = status;
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.textContent.toLowerCase().includes(status) || (status === 'all' && btn.textContent === 'All')) {
-                    btn.classList.add('active');
-                }
-            });
-            renderIssues();
-        };
-        
-        function renderIssues() {
-            const container = document.getElementById('issuesList');
-            let filtered = window.issues;
-            
-            if (window.currentFilter !== 'all') {
-                filtered = window.issues.filter(i => i.status === window.currentFilter);
-            }
-            
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="loading">No issues found</div>';
                 return;
             }
             
-            container.innerHTML = filtered.map(issue => `
-                <div class="issue-card priority-${issue.priority}" onclick="viewIssueDetail('${issue.id}')">
-                    <div class="issue-title">${escapeHtml(issue.title)}</div>
-                    <div class="issue-meta">
-                        <span class="status-badge status-${issue.status === 'open' ? 'open' : (issue.status === 'in-progress' ? 'progress' : 'resolved')}">
-                            ${issue.status}
-                        </span>
-                        <span>📍 ${issue.location}</span>
-                        <span>📅 ${new Date(issue.createdAt).toLocaleDateString()}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        window.showCreateIssueModal = function() {
-            const modal = document.getElementById('modal');
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <h3>Create New Issue</h3>
-                    <form id="createIssueForm">
-                        <input type="text" id="issueTitle" placeholder="Issue Title" required>
-                        <textarea id="issueDescription" placeholder="Detailed description of the issue..." required></textarea>
-                        <select id="issuePriority">
-                            <option value="low">Low Priority</option>
-                            <option value="medium" selected>Medium Priority</option>
-                            <option value="high">High Priority</option>
-                        </select>
-                        <input type="text" id="issueLocation" placeholder="Location (e.g., Conference Room)" value="${window.selectedObject ? window.selectedObject.userData.name : ''}">
-                        <div class="modal-buttons">
-                            <button type="submit" class="submit-btn">Create Issue</button>
-                            <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-            modal.style.display = 'flex';
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
             
-            document.getElementById('createIssueForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newIssue = {
-                    id: Date.now().toString(),
-                    title: document.getElementById('issueTitle').value,
-                    description: document.getElementById('issueDescription').value,
-                    priority: document.getElementById('issuePriority').value,
-                    location: document.getElementById('issueLocation').value || 'Unknown',
-                    status: 'open',
-                    createdAt: new Date().toISOString(),
-                    createdBy: window.currentUser?.email || 'user@example.com',
-                    images: []
-                };
-                window.issues.unshift(newIssue);
-                saveIssues();
-                renderIssues();
-                closeModal();
-                alert('Issue created successfully!');
-            });
-        };
-        
-        window.viewIssueDetail = function(issueId) {
-            const issue = window.issues.find(i => i.id === issueId);
-            if (!issue) return;
-            
-            const modal = document.getElementById('modal');
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <h3>Issue Details</h3>
-                    <div class="issue-detail">
-                        <p><strong>Title:</strong> ${escapeHtml(issue.title)}</p>
-                        <p><strong>Status:</strong> 
-                            <select id="statusUpdate" onchange="updateIssueStatus('${issue.id}', this.value)">
-                                <option value="open" ${issue.status === 'open' ? 'selected' : ''}>Open</option>
-                                <option value="in-progress" ${issue.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-                                <option value="resolved" ${issue.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-                            </select>
-                        </p>
-                        <p><strong>Priority:</strong> ${issue.priority}</p>
-                        <p><strong>Location:</strong> ${issue.location}</p>
-                        <p><strong>Description:</strong><br>${escapeHtml(issue.description)}</p>
-                        <p><strong>Created:</strong> ${new Date(issue.createdAt).toLocaleString()}</p>
-                        <p><strong>Created by:</strong> ${issue.createdBy}</p>
-                        <div class="modal-buttons">
-                            <button class="cancel-btn" onclick="closeModal()">Close</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            modal.style.display = 'flex';
-        };
-        
-        window.updateIssueStatus = function(issueId, newStatus) {
-            const issue = window.issues.find(i => i.id === issueId);
-            if (issue) {
-                issue.status = newStatus;
-                saveIssues();
-                renderIssues();
-            }
-        };
-        
-        window.closeModal = function() {
-            document.getElementById('modal').style.display = 'none';
-        };
-        
-        window.toggleIssuesPanel = function() {
-            const panel = document.getElementById('issuesPanel');
-            if (window.innerWidth <= 768) {
-                panel.classList.toggle('open');
-            }
-        };
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Auth functions
-        window.showRegister = function() {
-            const authDiv = document.getElementById('authForms');
-            authDiv.innerHTML = `
-                <h3>Register</h3>
-                <form id="registerForm">
-                    <input type="text" id="regName" placeholder="Full Name" required>
-                    <input type="email" id="regEmail" placeholder="Email" required>
-                    <input type="password" id="regPassword" placeholder="Password" required>
-                    <button type="submit">Register</button>
-                </form>
-                <p class="auth-link">Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
-            `;
-            
-            document.getElementById('registerForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const users = JSON.parse(localStorage.getItem('property_users') || '[]');
-                const newUser = {
-                    id: Date.now(),
-                    name: document.getElementById('regName').value,
-                    email: document.getElementById('regEmail').value,
-                    password: document.getElementById('regPassword').value
-                };
-                users.push(newUser);
-                localStorage.setItem('property_users', JSON.stringify(users));
-                alert('Registration successful! Please login.');
-                showLogin();
-            });
-        };
-        
-        window.showLogin = function() {
-            const authDiv = document.getElementById('authForms');
-            authDiv.innerHTML = `
-                <h3>Login</h3>
-                <form id="loginForm">
-                    <input type="email" id="loginEmail" placeholder="Email" required>
-                    <input type="password" id="loginPassword" placeholder="Password" required>
-                    <button type="submit">Login</button>
-                </form>
-                <p class="auth-link">Don't have an account? <a href="#" onclick="showRegister()">Register</a></p>
-                <div class="demo-credentials">
-                    <strong>Demo Credentials:</strong><br>
-                    Email: admin@example.com<br>
-                    Password: password123
-                </div>
-            `;
-            
-            document.getElementById('loginForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const email = document.getElementById('loginEmail').value;
-                const password = document.getElementById('loginPassword').value;
-                
-                // Demo login
-                if ((email === 'admin@example.com' && password === 'password123') ||
-                    (email === 'user@example.com' && password === 'password123')) {
-                    window.currentUser = { email, name: email.split('@')[0] };
-                    document.getElementById('userName').textContent = `Welcome, ${window.currentUser.name}`;
-                    document.getElementById('authContainer').style.display = 'none';
-                    document.getElementById('appContainer').style.display = 'flex';
-                    loadIssues();
-                    init3DScene();
-                } else {
-                    // Check registered users
-                    const users = JSON.parse(localStorage.getItem('property_users') || '[]');
-                    const user = users.find(u => u.email === email && u.password === password);
-                    if (user) {
-                        window.currentUser = user;
-                        document.getElementById('userName').textContent = `Welcome, ${user.name}`;
-                        document.getElementById('authContainer').style.display = 'none';
-                        document.getElementById('appContainer').style.display = 'flex';
-                        loadIssues();
-                        init3DScene();
-                    } else {
-                        alert('Invalid credentials. Use admin@example.com / password123');
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            if (intersects.length > 0) {
+                const id = ifcLoader.ifcManager.getExpressId(intersects[0].object.geometry, intersects[0].faceIndex);
+                if (id) {
+                    // Remove previous highlight
+                    if (highlightedSubset) {
+                        ifcLoader.ifcManager.removeSubset(currentModelID, scene);
                     }
+                    // Highlight selected
+                    highlightedSubset = ifcLoader.ifcManager.createSubset({
+                        modelID: currentModelID,
+                        ids: [id],
+                        scene: scene,
+                        removePrevious: true,
+                        material: new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.6, depthTest: false })
+                    });
+                    if (window.onElementSelected) window.onElementSelected(id);
                 }
-            });
-        };
+            }
+        }
         
-        window.logout = function() {
-            window.currentUser = null;
-            document.getElementById('appContainer').style.display = 'none';
-            document.getElementById('authContainer').style.display = 'flex';
-            showLogin();
-        };
-        
-        // Initialize
-        showLogin();
-        
-        // Close modal on outside click
-        window.onclick = function(event) {
-            const modal = document.getElementById('modal');
-            if (event.target === modal) {
-                closeModal();
+        window.clearIfcHighlight = () => {
+            if (highlightedSubset && ifcLoader && currentModelID !== 0) {
+                try { 
+                    ifcLoader.ifcManager.removeSubset(currentModelID, scene);
+                    highlightedSubset = null;
+                } catch(e) {}
             }
         };
+        
+        window.loadIfcInViewer = async (file) => {
+            if (!ifcLoader) {
+                alert("IFC Loader not ready. Please refresh and try again.");
+                return;
+            }
+            const loader = document.getElementById('loader-overlay');
+            if (loader) loader.classList.remove('hidden');
+            
+            // Clear existing
+            if (currentModelID !== 0) {
+                try { 
+                    ifcLoader.ifcManager.removeModel(currentModelID);
+                } catch(e) {}
+                // Clear all meshes from scene
+                scene.children.forEach(child => {
+                    if (child.isMesh && child !== scene.children.find(c => c.isGridHelper)) {
+                        scene.remove(child);
+                    }
+                });
+                currentModelID = 0;
+            }
+            
+            const url = URL.createObjectURL(file);
+            try {
+                const model = await ifcLoader.load(url);
+                scene.add(model);
+                currentModelID = model.modelID;
+                
+                // Adjust camera to fit model
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3()).length();
+                controls.target.copy(center);
+                camera.position.set(center.x + size/1.5, center.y + size/2, center.z + size/1.5);
+                controls.update();
+                
+                if (loader) loader.classList.add('hidden');
+                URL.revokeObjectURL(url);
+                showToast('IFC model loaded successfully!');
+            } catch (err) {
+                console.error('Error loading IFC:', err);
+                if (loader) loader.classList.add('hidden');
+                alert('Error loading IFC file. Please ensure it\'s a valid IFC file.');
+            }
+        };
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-bounce';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Initialize when viewer container is visible
+        const observer = new MutationObserver(() => {
+            const viewerPage = document.getElementById('page-viewer');
+            if (viewerPage && viewerPage.classList.contains('active') && !window._viewerInitialized) {
+                init();
+                window._viewerInitialized = true;
+            }
+        });
+        observer.observe(document.getElementById('page-viewer'), { attributes: true, attributeFilter: ['class'] });
+        
+        // Also try to init immediately if viewer is already visible
+        if (document.getElementById('page-viewer') && document.getElementById('page-viewer').classList.contains('active')) {
+            init();
+            window._viewerInitialized = true;
+        }
     </script>
 </body>
 </html>
